@@ -1,0 +1,22 @@
+test:
+  TFRecord: /storage/group/sam77/default/lab/siddharth/bichrom/Bichrom/construct_data/training_data3/data_test.bed
+  chromatin_tracks: &id001
+  - iAscl1_sample_data/GSE80482_h3k27ac-0h.bw
+  - iAscl1_sample_data/GSE80482_h3k27me3-0h.bw
+  labels: labels
+  seq: seq
+train_bichrom:
+  TFRecord: /storage/group/sam77/default/lab/siddharth/bichrom/Bichrom/construct_data/training_data3/data_train_bichrom.bed
+  chromatin_tracks: *id001
+  labels: labels
+  seq: seq
+train_seq:
+  TFRecord: /storage/group/sam77/default/lab/siddharth/bichrom/Bichrom/construct_data/training_data3/data_train_seq.bed
+  chromatin_tracks: *id001
+  labels: labels
+  seq: seq
+val:
+  TFRecord: /storage/group/sam77/default/lab/siddharth/bichrom/Bichrom/construct_data/training_data3/data_val.bed
+  chromatin_tracks: *id001
+  labels: labels
+  seq: seq

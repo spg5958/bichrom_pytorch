@@ -15,7 +15,7 @@ import pyBigWig
 from pybedtools import Interval, BedTool
 import logging
 
-import tensorflow as tf
+# import tensorflow as tf
 
 def filter_chromosomes(input_df, to_filter=None, to_keep=None):
     """
@@ -277,76 +277,76 @@ def get_data(coords, genome_fasta, chromatin_tracks, nbins, reverse=False, numPr
 
     return X_seq, chromatin_out_lists, y
 
-def get_data_TFRecord(coords, genome_fasta, chromatin_tracks, nbins, outprefix, reverse=False, numProcessors=1):
-    """
-    Given coordinates dataframe, extract the sequence and chromatin signal,
-    Then save in **TFReocrd** format
-    """
+# def get_data_TFRecord(coords, genome_fasta, chromatin_tracks, nbins, outprefix, reverse=False, numProcessors=1):
+#     """
+#     Given coordinates dataframe, extract the sequence and chromatin signal,
+#     Then save in **TFReocrd** format
+#     """
 
-    # split coordinates and assign chunks to workers
-    num_chunks = math.ceil(len(coords) / 7000)
-    chunks = np.array_split(coords, num_chunks)
-    get_data_TFRecord_worker_freeze = functools.partial(get_data_TFRecord_worker, 
-                                                    fasta=genome_fasta, nbins=nbins, 
-                                                    bigwig_files=chromatin_tracks, reverse=reverse)
+#     # split coordinates and assign chunks to workers
+#     num_chunks = math.ceil(len(coords) / 7000)
+#     chunks = np.array_split(coords, num_chunks)
+#     get_data_TFRecord_worker_freeze = functools.partial(get_data_TFRecord_worker, 
+#                                                     fasta=genome_fasta, nbins=nbins, 
+#                                                     bigwig_files=chromatin_tracks, reverse=reverse)
 
-    pool = Pool(numProcessors)
-    res = pool.starmap_async(get_data_TFRecord_worker_freeze, zip(chunks, [outprefix + "_" + str(i) for i in range(num_chunks)]))
-    res = res.get()
+#     pool = Pool(numProcessors)
+#     res = pool.starmap_async(get_data_TFRecord_worker_freeze, zip(chunks, [outprefix + "_" + str(i) for i in range(num_chunks)]))
+#     res = res.get()
 
-    return res
+#     return res
 
-def get_data_TFRecord_worker(coords, outprefix, fasta, bigwig_files, nbins, reverse=False):
+# def get_data_TFRecord_worker(coords, outprefix, fasta, bigwig_files, nbins, reverse=False):
 
-    genome_pyfasta = pyfasta.Fasta(fasta)
-    bigwigs = [pyBigWig.open(bw) for bw in bigwig_files]
+#     genome_pyfasta = pyfasta.Fasta(fasta)
+#     bigwigs = [pyBigWig.open(bw) for bw in bigwig_files]
 
-    # Reference: https://stackoverflow.com/questions/47861084/how-to-store-numpy-arrays-as-tfrecord
-    def serialize_array(array):
-        array = tf.io.serialize_tensor(array)
-        return array
+#     # Reference: https://stackoverflow.com/questions/47861084/how-to-store-numpy-arrays-as-tfrecord
+#     def serialize_array(array):
+#         array = tf.io.serialize_tensor(array)
+#         return array
 
-    def _bytes_feature(value):
-        """Returns a bytes_list from a string / byte."""
-        if isinstance(value, type(tf.constant(0))): # if value ist tensor
-            value = value.numpy() # get value of tensor
-        return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
+#     def _bytes_feature(value):
+#         """Returns a bytes_list from a string / byte."""
+#         if isinstance(value, type(tf.constant(0))): # if value ist tensor
+#             value = value.numpy() # get value of tensor
+#         return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
 
-    TFRecord_file = outprefix + ".TFRecord"
-    with tf.io.TFRecordWriter(TFRecord_file) as writer:
-        for item in coords.itertuples():
-            feature_dict = defaultdict()
+#     TFRecord_file = outprefix + ".TFRecord"
+#     with tf.io.TFRecordWriter(TFRecord_file) as writer:
+#         for item in coords.itertuples():
+#             feature_dict = defaultdict()
 
-            # seq
-            seq = genome_pyfasta[item.chrom][int(item.start):int(item.end)]
-            if reverse:
-                seq = rev_comp(seq)
-            seq_serialized = serialize_array(dna2onehot(seq))
-            feature_dict["seq"] = _bytes_feature(seq_serialized)
+#             # seq
+#             seq = genome_pyfasta[item.chrom][int(item.start):int(item.end)]
+#             if reverse:
+#                 seq = rev_comp(seq)
+#             seq_serialized = serialize_array(dna2onehot(seq))
+#             feature_dict["seq"] = _bytes_feature(seq_serialized)
 
-            # chromatin track
-            try:
-                for idx, bigwig in enumerate(bigwigs):
-                    m = (np.nan_to_num(bigwig.values(item.chrom, item.start, item.end))
-                                            .reshape((nbins, -1))
-                                            .mean(axis=1, dtype=float))
-                    if reverse:
-                        m = m[::-1] 
-                    m_serialized = serialize_array(m)
-                    feature_dict[bigwig_files[idx]] = _bytes_feature(m_serialized)
-            except RuntimeError as e:
-                logging.warning(e)
-                logging.warning(f"Chromatin track {bigwig_files[idx]} doesn't have information in {item} Skip this region...")
-                continue
-            # label
-            feature_dict["label"] = tf.train.Feature(int64_list=tf.train.Int64List(value=[item.label]))
+#             # chromatin track
+#             try:
+#                 for idx, bigwig in enumerate(bigwigs):
+#                     m = (np.nan_to_num(bigwig.values(item.chrom, item.start, item.end))
+#                                             .reshape((nbins, -1))
+#                                             .mean(axis=1, dtype=float))
+#                     if reverse:
+#                         m = m[::-1] 
+#                     m_serialized = serialize_array(m)
+#                     feature_dict[bigwig_files[idx]] = _bytes_feature(m_serialized)
+#             except RuntimeError as e:
+#                 logging.warning(e)
+#                 logging.warning(f"Chromatin track {bigwig_files[idx]} doesn't have information in {item} Skip this region...")
+#                 continue
+#             # label
+#             feature_dict["label"] = tf.train.Feature(int64_list=tf.train.Int64List(value=[item.label]))
 
-            example = tf.train.Example(features=tf.train.Features(feature=feature_dict))
-            writer.write(example.SerializeToString())
+#             example = tf.train.Example(features=tf.train.Features(feature=feature_dict))
+#             writer.write(example.SerializeToString())
 
-    for bw in bigwigs: bw.close()
+#     for bw in bigwigs: bw.close()
     
-    return TFRecord_file
+#     return TFRecord_file
 
 def dna2onehot(dnaSeq):
     DNA2index = {

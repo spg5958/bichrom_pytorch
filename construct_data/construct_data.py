@@ -12,6 +12,8 @@ logging.getLogger().setLevel(logging.DEBUG)
 # local imports
 import utils
 
+import os
+
 def define_training_coordinates(chip_coords: pd.DataFrame, genome_sizes_file: str,
                                 acc_bdt: BedTool, curr_genome_bdt: BedTool,
                                 blacklist_bdt: BedTool, L,
@@ -116,11 +118,11 @@ def define_training_coordinates(chip_coords: pd.DataFrame, genome_sizes_file: st
     logging.debug(f"training coordinates negative samples in inaccessible regions: {training_coords_seq_neg_inacc.shape[0]}")
 
     training_coords_seq = pd.concat([bound_sample_shift, training_coords_seq_neg_acc, training_coords_seq_neg_inacc])
-    training_coords_seq = training_coords_seq.sample(frac=1) # randomly shuffle the dataFrame
+    training_coords_seq = training_coords_seq.sample(frac=0.02) # randomly shuffle the dataFrame
 
     # TRAINING SET FOR BICHROM NETWORK
     training_coords_bichrom = pd.concat([bound_sample_shift, unbound_genome_df])
-    training_coords_bichrom = training_coords_bichrom.sample(frac=1) # randomly shuffle the dataFrame
+    training_coords_bichrom = training_coords_bichrom.sample(frac=0.02) # randomly shuffle the dataFrame
 
     # logging summary
     logging.debug(training_coords_seq.groupby(["label", "type"]).size())
@@ -144,21 +146,31 @@ def construct_training_set(genome_sizes_file, genome_fasta_file, peaks_file, bla
     # get the coordinates for training samples
     train_coords_seq, train_coords_bichrom = define_training_coordinates(chip_seq_coordinates, genome_sizes_file, acc_bdt, curr_genome_bdt,
                                 blacklist_bdt, window_length, len(chip_seq_coordinates)*5, [450, -450, 500, -500, 1250, -1250, 1750, -1750], None, None)
+    
+    col_list = list(train_coords_seq)
+    col_list[-2], col_list[-1] = col_list[-1], col_list[-2]
+    train_coords_seq = train_coords_seq[col_list]
+    
+    col_list = list(train_coords_bichrom)
+    col_list[-2], col_list[-1] = col_list[-1], col_list[-2]
+    train_coords_bichrom = train_coords_bichrom[col_list]
+    
     train_coords_seq.to_csv(out_prefix + "_seq.bed", header=False, index=False, sep="\t")
     train_coords_bichrom.to_csv(out_prefix + "_bichrom.bed", header=False, index=False, sep="\t")
 
     # get fasta sequence and chromatin coverage according to the coordinates
     # write TFRecord output
-    TFRecord_file_seq_f = utils.get_data_TFRecord(train_coords_seq, genome_fasta_file, chromatin_track_list, 
-                            nbins, outprefix=out_prefix + "_seq_forward" ,reverse=False, numProcessors=p)
-    TFRecord_file_seq_r = utils.get_data_TFRecord(train_coords_seq, genome_fasta_file, chromatin_track_list, 
-                            nbins, outprefix=out_prefix + "_seq_reverse",reverse=True, numProcessors=p)
-    TFRecord_file_bichrom_f = utils.get_data_TFRecord(train_coords_bichrom, genome_fasta_file, chromatin_track_list, 
-                         nbins, outprefix=out_prefix + "_bichrom_forward" ,reverse=False, numProcessors=p)
-    TFRecord_file_bichrom_r = utils.get_data_TFRecord(train_coords_bichrom, genome_fasta_file, chromatin_track_list, 
-                            nbins, outprefix=out_prefix + "_bichrom_reverse",reverse=True, numProcessors=p)
+#     TFRecord_file_seq_f = utils.get_data_TFRecord(train_coords_seq, genome_fasta_file, chromatin_track_list, 
+#                             nbins, outprefix=out_prefix + "_seq_forward" ,reverse=False, numProcessors=p)
+#     TFRecord_file_seq_r = utils.get_data_TFRecord(train_coords_seq, genome_fasta_file, chromatin_track_list, 
+#                             nbins, outprefix=out_prefix + "_seq_reverse",reverse=True, numProcessors=p)
+#     TFRecord_file_bichrom_f = utils.get_data_TFRecord(train_coords_bichrom, genome_fasta_file, chromatin_track_list, 
+#                          nbins, outprefix=out_prefix + "_bichrom_forward" ,reverse=False, numProcessors=p)
+#     TFRecord_file_bichrom_r = utils.get_data_TFRecord(train_coords_bichrom, genome_fasta_file, chromatin_track_list, 
+#                             nbins, outprefix=out_prefix + "_bichrom_reverse",reverse=True, numProcessors=p)
     
-    return TFRecord_file_seq_f + TFRecord_file_seq_r, TFRecord_file_bichrom_f + TFRecord_file_bichrom_r
+#     return TFRecord_file_seq_f + TFRecord_file_seq_r, TFRecord_file_bichrom_f + TFRecord_file_bichrom_r
+    return os.getcwd()+"/"+out_prefix + "_seq.bed", os.getcwd()+"/"+out_prefix + "_bichrom.bed"
 
 def construct_test_set(genome_sizes_file, genome_fasta_file, peaks_file, blacklist_file, to_keep,
                         window_length, stride, out_prefix, chromatin_track_list, nbins, p=1):
@@ -178,14 +190,24 @@ def construct_test_set(genome_sizes_file, genome_fasta_file, peaks_file, blackli
     unbound_genome_chop = (utils.chop_genome(genome_sizes_file, to_keep, excl=bound_chip_peaks_bdt.cat(blacklist_bdt), stride=stride, l=window_length)
                                 .assign(label=0, type="neg_chop"))
     
-    test_coords = pd.concat([bound_chip_peaks, unbound_genome_chop])
+    
+    test_coords = pd.concat([bound_chip_peaks, unbound_genome_chop]).sample(frac=0.02)
+    
+    print(test_coords.head())
+#     col_list = list(test_coords)
+#     col_list[-2], col_list[-1] = col_list[-1], col_list[-2]
+#     test_coords = test_coords[col_list]
+#     print(test_coords.head())
+    
     test_coords.to_csv(out_prefix + ".bed", header=False, index=False, sep="\t")
 
+    
+    
     # write TFRecord output
-    TFRecord_file = utils.get_data_TFRecord(test_coords, genome_fasta_file, chromatin_track_list, 
-                            nbins, outprefix=out_prefix + "_forward" ,reverse=False, numProcessors=p)    
+#     TFRecord_file = utils.get_data_TFRecord(test_coords, genome_fasta_file, chromatin_track_list, 
+#                             nbins, outprefix=out_prefix + "_forward" ,reverse=False, numProcessors=p)    
 
-    return TFRecord_file
+    return os.getcwd()+"/"+out_prefix + ".bed"
 
 def main():
 
@@ -278,7 +300,7 @@ def main():
                         to_keep=args.test_chroms,
                         out_prefix=args.outdir + '/data_test',
                         chromatin_track_list=args.chromtracks, nbins=args.nbins, p=args.p)
-
+    
     # Produce a default yaml file recording the output
     yml_training_schema = {'train_seq': {'seq': 'seq',
                                      'labels': 'labels',

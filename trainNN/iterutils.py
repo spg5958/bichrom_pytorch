@@ -3,9 +3,11 @@ to enable whole genome iteration """
 
 import h5py
 import numpy as np
-import tensorflow as tf
+# import tensorflow as tf
 
 from collections import defaultdict
+
+from seqchromloader import SeqChromDatasetByBed
 
 class Sequence:
     dic = {
@@ -121,46 +123,20 @@ def train_generator_h5(h5file, dspath, batchsize, seqlen, dtype, iterflag):
 
 def train_TFRecord_dataset(dspath, batchsize, dataflag, shuffle=True, drop_remainder=True):
     
-    #raw_dataset = tf.data.TFRecordDataset(dspath["TFRecord"])
+    loader=None
+    genome="/storage/home/spg5958/group/genomes/mm10/mm10.fa"
+    chromtracks=["../sample_data/GSE80482_h3k27ac-0h.bw", \
+                 "../sample_data/GSE80482_h3k27ac-12h.bw"]
+    dataloader_kws={"num_workers":4,"batch_size":batchsize}
+    
+    print(dspath)
+    loader=SeqChromDatasetByBed(dspath["TFRecord"],genome,chromtracks,dataloader_kws=dataloader_kws)
 
-    # prepare feature description
-    feature_description = defaultdict()
-    feature_description["seq"] = tf.io.FixedLenFeature([], tf.string)
-    feature_description["label"] = tf.io.FixedLenFeature([], tf.int64)
-    for ct in dspath["chromatin_tracks"]:
-        feature_description[ct] = tf.io.FixedLenFeature([], tf.string)
+#     if dataflag=="seqonly":
+#         loader=SeqChromDatasetByBed(dspath["TFRecord"],genome,chromtracks,dataloader_kws=dataloader_kws)
+#     else:
+#         loader=SeqChromDatasetByBed(dspath["TFRecord"],genome,chromtracks,dataloader_kws=dataloader_kws)
+#         return {"seq":seq, "chrom_input":combined_chromatin_data}, label
 
-    def _parse_function(example_proto, flag="seqonly"):
-        # Parse the input `tf.train.Example` proto using the feature dictionary
-        example_message = tf.io.parse_single_example(example_proto, feature_description)
-
-        seq = example_message["seq"]
-        seq = tf.io.parse_tensor(seq, out_type=tf.int64)
-
-        combined_chromatin_data = []
-        for ct in dspath["chromatin_tracks"]:
-            ct_message = example_message[ct]
-            ct_message = tf.io.parse_tensor(ct_message, out_type=tf.float64)
-            combined_chromatin_data.append(ct_message)
-        combined_chromatin_data = tf.concat(combined_chromatin_data, axis=0)
-
-        label = example_message["label"]
-
-        if flag=="seqonly":
-            return (seq, label)
-        else:
-            return {"seq":seq, "chrom_input":combined_chromatin_data}, label
-
-    def _parse_function_wrapper(example_proto):
-        return _parse_function(example_proto, dataflag)
-
-    files = tf.data.Dataset.from_tensors(dspath["TFRecord"])
-    parsed_dataset = files.interleave(tf.data.TFRecordDataset, num_parallel_calls=tf.data.AUTOTUNE)
-    if shuffle: parsed_dataset = parsed_dataset.shuffle(100)
-    parsed_dataset = (parsed_dataset.map(_parse_function_wrapper, num_parallel_calls=tf.data.AUTOTUNE)
-                                    .batch(batchsize, drop_remainder=drop_remainder)
-                                    .prefetch(tf.data.AUTOTUNE))
-
-    return parsed_dataset
-
+    return loader
     

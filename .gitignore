@@ -1,3 +1,6 @@
 .idea/*
 tfwide_figures/*
 archive/*
+__pycache__/
+*.bw
+*.TFRecord

@@ -3,12 +3,13 @@ from json import load
 import numpy as np
 import yaml
 from subprocess import call
-from tensorflow.keras.models import load_model
+# from tensorflow.keras.models import load_model
 
-from train_seq import build_and_train_net
-from train_sc import transfer_and_train_msc
+from train_seq import build_and_train_net, build_model
+from train_sc import transfer_and_train_msc, bichrom
 from scan_genome import evaluate_models
 
+import torch
 
 class Params:
     def __init__(self):
@@ -20,7 +21,7 @@ class Params:
         self.pooling_stride = 15
         self.dropout = 0.5
         self.dense_layer_size = 512
-
+        self.lstm_out = 32 
 
 def return_best_model(pr_vec, model_path):
     # return the model with the lowest validation LOSS
@@ -85,20 +86,27 @@ def run_bimodal_network(train_path, val_path, records_path, base_seq_model_path,
                                                   batch_size=curr_params.batchsize,
                                                   records_path=records_path_sc,
                                                   bin_size=bin_size,
-                                                  seq_len=seq_len)
+                                                  seq_len=seq_len,
+                                                  params=curr_params
+                                                 )
 
     # choose the model with the lowest validation loss
     # loss, bimodal_val_pr = np.loadtxt(records_path_sc + 'trainingLoss.txt')
+    print(f"bimodal_val = {bimodal_val_pr}")
     model_sc = return_best_model(pr_vec=bimodal_val_pr, model_path=records_path_sc)
     return model_sc
 
 
 def train_bichrom(data_paths, outdir, seq_len, bin_size):
     # Train the sequence-only network (M-SEQ)
-    mseq_path = run_seq_network(train_path=data_paths['train_seq'], val_path=data_paths['val'],
-                           records_path=outdir, seq_len=seq_len)
+    print("Training seq")
+#     mseq_path = run_seq_network(train_path=data_paths['train_seq'], val_path=data_paths['val'],
+#                            records_path=outdir, seq_len=seq_len)
 
+    mseq_path=outdir + '/seqnet/' + "model_epoch1.hdf5"
+    print(mseq_path)
     # Train the bimodal network (M-SC)
+    print("Training bichrom")
     msc_path = run_bimodal_network(train_path=data_paths['train_bichrom'],
                               val_path=data_paths['val'], records_path=outdir,
                               base_seq_model_path=mseq_path, bin_size=bin_size, seq_len=seq_len)
@@ -111,9 +119,16 @@ def train_bichrom(data_paths, outdir, seq_len, bin_size):
     # save the best msc model
     call(['cp', msc_path, outdir + '/full_model.best.hdf5'])
 
-    mseq = load_model(mseq_path)
-    msc = load_model(msc_path)
-    evaluate_models(path=data_paths['test'],
-                    probas_out_seq=probas_out_seq, probas_out_sc=probas_out_sc,
-                    model_seq=mseq, model_sc=msc,
-                    records_file_path=records_file_path)
+    mseq = build_model(Params(), seq_len)
+    mseq.load_state_dict(torch.load(mseq_path))
+    print(data_paths)
+    no_of_chromatin_tracks = len(data_paths["test"]['chromatin_tracks'])
+    msc=bichrom(mseq,no_of_chromatin_tracks)
+    msc.load_state_dict(torch.load(msc_path))
+    
+#     mseq = load_model(mseq_path)
+#     msc = load_model(msc_path)
+#     evaluate_models(path=data_paths['test'],
+#                     probas_out_seq=probas_out_seq, probas_out_sc=probas_out_sc,
+#                     model_seq=mseq, model_sc=msc,
+#                     records_file_path=records_file_path)
