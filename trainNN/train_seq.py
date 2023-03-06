@@ -115,7 +115,7 @@ def train(model, train_path, val_path, batch_size, records_path):
 #     adam = Adam(learning_rate=0.001)
 #     model.compile(loss='binary_crossentropy', optimizer=adam)
 
-    loss_fn = torch.nn.CrossEntropyLoss()
+    loss_fn = torch.nn.BCELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     
     train_dataset = TFdataset(train_path, batch_size, "seqonly")
@@ -158,8 +158,9 @@ def train(model, train_path, val_path, batch_size, records_path):
 
             # Make predictions for this batch
             outputs = model(seq)
-            labels=labels.type(torch.DoubleTensor) 
+            labels=labels.to(torch.float32)
             # Compute the loss and its gradients
+#             print(outputs.dtype, labels.dtype)
             loss = loss_fn(outputs, labels)
             loss.backward()
 
@@ -202,7 +203,7 @@ def train(model, train_path, val_path, batch_size, records_path):
         for i, vdata in enumerate(val_dataset):
             vseq,vchrom,vtarget,vlabels = vdata
             voutputs = model(vseq)
-            vlabels=vlabels.type(torch.DoubleTensor)
+            vlabels=vlabels.to(torch.float32)
             
             vloss = loss_fn(voutputs, vlabels)
             running_vloss += float(vloss)

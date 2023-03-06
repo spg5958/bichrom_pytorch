@@ -100,10 +100,9 @@ def run_bimodal_network(train_path, val_path, records_path, base_seq_model_path,
 def train_bichrom(data_paths, outdir, seq_len, bin_size):
     # Train the sequence-only network (M-SEQ)
     print("Training seq")
-#     mseq_path = run_seq_network(train_path=data_paths['train_seq'], val_path=data_paths['val'],
-#                            records_path=outdir, seq_len=seq_len)
+    mseq_path = run_seq_network(train_path=data_paths['train_seq'], val_path=data_paths['val'], records_path=outdir, seq_len=seq_len)
 
-    mseq_path=outdir + '/seqnet/' + "model_epoch1.hdf5"
+#     mseq_path=outdir + '/seqnet/' + "model_epoch1.hdf5"
     print(mseq_path)
     # Train the bimodal network (M-SC)
     print("Training bichrom")

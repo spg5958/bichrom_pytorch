@@ -55,7 +55,7 @@ class bichrom(nn.Module):
                 self.activation[name] = output.detach()
             return hook
         self.base_model.model_dense_repeat[7].register_forward_hook(get_activation('dense_2'))
-        self.linear=nn.Linear(512, 1)
+        self.linear=nn.Linear(1, 1)
         self.tanh=nn.Tanh()
         print("-->"+str(no_of_chromatin_tracks))
         self.model=bichrom_chrom(no_of_chromatin_tracks)
@@ -63,14 +63,20 @@ class bichrom(nn.Module):
         self.sigmoid=nn.Sigmoid()
         
     def forward(self,seq_input, chromatin_input):
-        self.base_model(seq_input)
-        curr_tensor=self.activation['dense_2']
-        xs=self.linear(curr_tensor)
+        result=self.base_model(seq_input)
+        print(result.shape)
+        curr_tensor=self.activation['dense_2'] ########### requires_grad=False
+        print(result.requires_grad)
+        xs=self.linear(result)
         xs=self.tanh(xs)
+        print(f"xs = {xs.requires_grad}")
         xc=self.model(chromatin_input)
+        print(f"xc = {xc.requires_grad}")
         xsc = torch.cat((xs, xc), dim=1)
         xsc=self.linear2(xsc)
         result=self.sigmoid(xsc)
+        print(f"xsc requires_grad = {xsc.requires_grad}")
+        print("yey20")
         return result
     
 def add_new_layers(base_model_path, seq_len, no_of_chromatin_tracks, bin_size, params):
@@ -111,20 +117,19 @@ def add_new_layers(base_model_path, seq_len, no_of_chromatin_tracks, bin_size, p
 def transfer(train_path, val_path, basemodel, model,
              batchsize, records_path):
     
-#     for param in basemodel.parameters():
-#         param.requires_grad = False
+    for param in basemodel.parameters():
+        param.requires_grad = False
     
-    loss_fn = torch.nn.CrossEntropyLoss()
-#     optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9, nesterov=True)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    loss_fn = torch.nn.BCELoss()
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9, nesterov=True)
     train_dataset = TFdataset(train_path, batchsize, "all")
     val_dataset = TFdataset(val_path, batchsize, "all")
     
 #     layers=list(model.state_dict().keys())
 #     print(len(layers))
 #     print(len(list(model.parameters())))
-#     for l,p in zip(model.state_dict().keys(), model.parameters()):
-#         print(l,p.requires_grad)
+    for l,p in zip(model.state_dict().keys(), model.parameters()):
+        print(l,p.requires_grad)
     
     def train_one_epoch(epoch_index):
         running_loss = 0.
@@ -149,7 +154,7 @@ def transfer(train_path, val_path, basemodel, model,
 
             # Make predictions for this batch
             outputs = model(seq,chrom)#(torch.rand(512,4,1000),torch.randn(512,2,500))#(seq,chrom)
-            labels=labels.type(torch.DoubleTensor) 
+            labels=labels.to(torch.float32) 
             # Compute the loss and its gradients
             loss = loss_fn(outputs, labels)
             loss.backward()
@@ -179,7 +184,7 @@ def transfer(train_path, val_path, basemodel, model,
 #     writer = SummaryWriter('runs/fashion_trainer_{}'.format(timestamp))
     epoch_number = 0
 
-    EPOCHS = 1
+    EPOCHS = 2
 
     best_vloss = 1_000_000.
 
@@ -201,9 +206,16 @@ def transfer(train_path, val_path, basemodel, model,
         for i, vdata in enumerate(val_dataset):
             vseq,vchrom,vtarget,vlabels = vdata
             voutputs = model(vseq,vchrom)
-            vlabels=vlabels.type(torch.DoubleTensor)
+            vlabels=vlabels.to(torch.float32)
+            
             vloss = loss_fn(voutputs, vlabels)
-            running_vloss += vloss
+            running_vloss += float(vloss)
+#             j=0
+#             while True:
+#                 running_vloss += vloss
+#                 print(j,end="\r")
+#                 j+=1
+            
             avg_vloss = running_vloss / (i + 1)
             print('LOSS train {} valid {}'.format(avg_loss, avg_vloss))
 
