@@ -118,11 +118,11 @@ def define_training_coordinates(chip_coords: pd.DataFrame, genome_sizes_file: st
     logging.debug(f"training coordinates negative samples in inaccessible regions: {training_coords_seq_neg_inacc.shape[0]}")
 
     training_coords_seq = pd.concat([bound_sample_shift, training_coords_seq_neg_acc, training_coords_seq_neg_inacc])
-    training_coords_seq = training_coords_seq.sample(frac=0.02) # randomly shuffle the dataFrame
+    training_coords_seq = training_coords_seq.sample(frac=1) # randomly shuffle the dataFrame
 
     # TRAINING SET FOR BICHROM NETWORK
     training_coords_bichrom = pd.concat([bound_sample_shift, unbound_genome_df])
-    training_coords_bichrom = training_coords_bichrom.sample(frac=0.02) # randomly shuffle the dataFrame
+    training_coords_bichrom = training_coords_bichrom.sample(frac=1) # randomly shuffle the dataFrame
 
     # logging summary
     logging.debug(training_coords_seq.groupby(["label", "type"]).size())

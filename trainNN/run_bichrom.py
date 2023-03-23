@@ -23,6 +23,6 @@ if __name__ == '__main__':
     # create the output directory:
     outdir = args.outdir
     call(['mkdir', outdir])
-
+    
     train_bichrom(data_paths=data_paths, outdir=outdir, 
                   seq_len=args.len, bin_size=int(args.len/args.nbins))

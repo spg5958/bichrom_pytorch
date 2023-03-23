@@ -14,14 +14,15 @@ import iterutils
 from helper import plot_distributions
 
 
-def TFdataset(path, batchsize, dataflag):
+def TFdataset(path, batchsize, dataflag, bin_size):
 
-    TFdataset_batched = iterutils.train_TFRecord_dataset(path, batchsize, dataflag, shuffle=False, drop_remainder=False)
+    TFdataset_batched = iterutils.train_TFRecord_dataset(path, batchsize, dataflag, shuffle=False, drop_remainder=False, transforms={"chrom": lambda x:x.reshape((x.shape[0],bin_size,-1)).mean(axis=1).flatten()})
 
+#     print(next(iter(TFdataset_batched)))
     return TFdataset_batched
 
 
-def test_on_batch(TFdataset, model, outfile):
+def test_on_batch(TFdataset, model, outfile, mode):
     """
     Get probabilities for each test data point.
     The reason that this is implemented in a batch is because
@@ -33,10 +34,21 @@ def test_on_batch(TFdataset, model, outfile):
         outfile (str): The outfile used for storing probabilities.
     Returns: None (Saves an output file with the probabilities for the test set )
     """
-
-    probas = np.concatenate([i for i in TFdataset.map(lambda x,y: model(x, training=False),
-                                                                         num_parallel_calls=tf.data.AUTOTUNE)])
-    true_labels = np.concatenate([i for i in TFdataset.map(lambda x,y: y, num_parallel_calls=tf.data.AUTOTUNE)])
+    print(model)
+    model.train(False)
+    probas_list=[]
+    true_labels_list=[]
+    for batch in TFdataset:
+        seq,chrom,target,labels=batch
+        if mode=="seqonly":
+            p=model(seq).detach().numpy()
+        else:
+            p=model(seq,chrom).detach().numpy()
+        probas_list.append(p)
+        true_labels_list.append(labels)
+    probas=np.concatenate(probas_list)
+    true_labels = np.concatenate(true_labels_list)
+    
     # erase the contents in outfile
     file = open(outfile, "w")
     file.close()
@@ -73,7 +85,7 @@ def get_metrics(test_labels, test_probas, records_file, model_name):
     records_file.write("AUC PRC:{0}\n".format(prc_auc))
 
 
-def get_probabilities(path, model, outfile, mode):
+def get_probabilities(path, model, outfile, mode, bin_size):
     """
     Get network-assigned probabilities
     Parameters:
@@ -84,10 +96,10 @@ def get_probabilities(path, model, outfile, mode):
          true labels (ndarray): True test-set labels
     """
     # Inputing a range of default values here, can be changed later.
-    dataset = TFdataset(path=path, batchsize=1000, dataflag=mode)
+    dataset = TFdataset(path=path, batchsize=1000, dataflag=mode, bin_size=bin_size)
     # Load the keras model
     # model = load_model(model_file)
-    true_labels, probas = test_on_batch(dataset, model, outfile)
+    true_labels, probas = test_on_batch(dataset, model, outfile, mode)
 
     return true_labels, probas
 
@@ -100,17 +112,19 @@ def plot_pr_curve(test_labels, test_probas, color, label):
     plt.xticks(fontsize=14)
     plt.yticks(fontsize=14)
 
-
+    
 def combine_pr_curves(records_file, m_seq_probas, m_sc_probas, labels):
     plot_pr_curve(labels, m_seq_probas, color='#F1C40F', label='Seqnet')
     plot_pr_curve(labels, m_sc_probas, color='#2471A3', label='Bichrom')
     plt.legend(loc='upper right')
     plt.savefig(records_file + '.pr_curves.pdf')
 
-
+    
 def evaluate_models(path, probas_out_seq, probas_out_sc,
-                    model_seq, model_sc, records_file_path):
+                    model_seq, model_sc, records_file_path, bin_size):
 
+    print(f"-->{path}")
+    
     # Define the file that contains testing metrics
     records_files = open(records_file_path + '.txt', "w")
 
@@ -119,11 +133,11 @@ def evaluate_models(path, probas_out_seq, probas_out_sc,
     true_labels, probas_seq = get_probabilities(path=path,
                                                 model=model_seq,
                                                 outfile=probas_out_seq,
-                                                mode='seqonly')
+                                                mode='seqonly',bin_size=bin_size)
 
     _, probas_sc = get_probabilities(path=path, 
                                      model=model_sc, outfile=probas_out_sc,
-                                     mode='all')
+                                     mode='all',bin_size=bin_size)
 
     # Get the auROC and the auPRC for both M-SEQ and M-SC models:
     get_metrics(true_labels, probas_seq, records_files, 'MSEQ')

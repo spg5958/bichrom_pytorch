@@ -121,16 +121,22 @@ def train_generator_h5(h5file, dspath, batchsize, seqlen, dtype, iterflag):
             else:
                 yield ds[start_index:end_index]
 
-def train_TFRecord_dataset(dspath, batchsize, dataflag, shuffle=True, drop_remainder=True):
+def train_TFRecord_dataset(dspath, batchsize, dataflag, shuffle=True, drop_remainder=True, transforms=None):
     
     loader=None
-    genome="/storage/home/spg5958/group/genomes/mm10/mm10.fa"
-    chromtracks=["../sample_data/GSE80482_h3k27ac-0h.bw", \
-                 "../sample_data/GSE80482_h3k27ac-12h.bw"]
-    dataloader_kws={"num_workers":4,"batch_size":batchsize}
     
-    print(dspath)
-    loader=SeqChromDatasetByBed(dspath["TFRecord"],genome,chromtracks,dataloader_kws=dataloader_kws)
+    print("="*20)
+    print(dspath["chromatin_tracks"])
+    
+    genome="/storage/home/spg5958/group/genomes/mm10/mm10.fa"
+    chromtracks=dspath["chromatin_tracks"]
+#     chromtracks=["../sample_data/GSE80482_h3k27ac-0h.bw", \
+#                  "../sample_data/GSE80482_h3k27ac-12h.bw"]
+    dataloader_kws={"num_workers":8,"batch_size":batchsize}
+    
+#     transforms={"chrom": lambda x:print(x.shape)}
+
+    loader=SeqChromDatasetByBed(dspath["TFRecord"],genome,chromtracks,transforms=transforms,dataloader_kws=dataloader_kws )
 
 #     if dataflag=="seqonly":
 #         loader=SeqChromDatasetByBed(dspath["TFRecord"],genome,chromtracks,dataloader_kws=dataloader_kws)
