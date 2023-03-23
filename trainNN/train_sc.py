@@ -125,8 +125,12 @@ def transfer(train_path, val_path, basemodel, model,
             print(f"Total Parameters = {sum(p.numel() for p in model.parameters())}")
             print(f"Total Trainable Parameters = {sum(p.numel() for p in model.parameters() if p.requires_grad)}")
             
-#             w1=model.state_dict()['base_model.linear.weight']
-#             w3=model.state_dict()['model.linear.weight']
+            ###########################
+            print("#"*20)
+            w1=model.state_dict()['base_model.linear.weight']
+            w3=model.state_dict()['model.conv1d.weight']
+            print("#"*20)
+            ###########################
             
             # Every data instance is an input + label pair
             seq,chrom,target,labels = data
@@ -148,12 +152,16 @@ def transfer(train_path, val_path, basemodel, model,
             batch_avg_vloss = running_loss / (i+1) # loss per batch
             print('  batch {} loss: {}'.format(i + 1, batch_avg_vloss))
 
-        
-#             w2=model.state_dict()['base_model.linear.weight']
-#             w4=model.state_dict()['model.linear.weight']
+         
+            ###########################
+            print("#"*20)
+            w2=model.state_dict()['base_model.linear.weight']
+            w4=model.state_dict()['model.conv1d.weight']
             
-#             print("Base Model Weight Norm = "+str(torch.linalg.norm(torch.sub(w1,w2))))
-#             print("Model Weight Norm = "+str(torch.linalg.norm(torch.sub(w3,w4))))
+            print("Base Model Weight Norm = "+str(torch.linalg.norm(torch.sub(w1,w2))))
+            print("Model Weight Norm = "+str(torch.linalg.norm(torch.sub(w3,w4))))
+            print("#"*20)
+            ###########################
             
         return batch_avg_vloss
     
