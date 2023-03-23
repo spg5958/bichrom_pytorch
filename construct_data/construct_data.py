@@ -158,18 +158,7 @@ def construct_training_set(genome_sizes_file, genome_fasta_file, peaks_file, bla
     train_coords_seq.to_csv(out_prefix + "_seq.bed", header=False, index=False, sep="\t")
     train_coords_bichrom.to_csv(out_prefix + "_bichrom.bed", header=False, index=False, sep="\t")
 
-    # get fasta sequence and chromatin coverage according to the coordinates
-    # write TFRecord output
-#     TFRecord_file_seq_f = utils.get_data_TFRecord(train_coords_seq, genome_fasta_file, chromatin_track_list, 
-#                             nbins, outprefix=out_prefix + "_seq_forward" ,reverse=False, numProcessors=p)
-#     TFRecord_file_seq_r = utils.get_data_TFRecord(train_coords_seq, genome_fasta_file, chromatin_track_list, 
-#                             nbins, outprefix=out_prefix + "_seq_reverse",reverse=True, numProcessors=p)
-#     TFRecord_file_bichrom_f = utils.get_data_TFRecord(train_coords_bichrom, genome_fasta_file, chromatin_track_list, 
-#                          nbins, outprefix=out_prefix + "_bichrom_forward" ,reverse=False, numProcessors=p)
-#     TFRecord_file_bichrom_r = utils.get_data_TFRecord(train_coords_bichrom, genome_fasta_file, chromatin_track_list, 
-#                             nbins, outprefix=out_prefix + "_bichrom_reverse",reverse=True, numProcessors=p)
-    
-#     return TFRecord_file_seq_f + TFRecord_file_seq_r, TFRecord_file_bichrom_f + TFRecord_file_bichrom_r
+
     return os.getcwd()+"/"+out_prefix + "_seq.bed", os.getcwd()+"/"+out_prefix + "_bichrom.bed"
 
 def construct_test_set(genome_sizes_file, genome_fasta_file, peaks_file, blacklist_file, to_keep,
@@ -202,10 +191,7 @@ def construct_test_set(genome_sizes_file, genome_fasta_file, peaks_file, blackli
     test_coords.to_csv(out_prefix + ".bed", header=False, index=False, sep="\t")
 
     
-    
-    # write TFRecord output
-#     TFRecord_file = utils.get_data_TFRecord(test_coords, genome_fasta_file, chromatin_track_list, 
-#                             nbins, outprefix=out_prefix + "_forward" ,reverse=False, numProcessors=p)    
+
 
     return os.getcwd()+"/"+out_prefix + ".bed"
 

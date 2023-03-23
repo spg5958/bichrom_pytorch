@@ -4,7 +4,6 @@ import numpy as np
 from sklearn.metrics import average_precision_score as auprc
 
 import os
-#os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 
 # local imports
 import iterutils
@@ -20,7 +19,6 @@ def TFdataset(path, batchsize, dataflag):
 
     TFdataset_batched = iterutils.train_TFRecord_dataset(path, batchsize, dataflag)
 
-#     print(next(iter(TFdataset_batched)))
     return TFdataset_batched
 
 
@@ -44,32 +42,7 @@ class bichrom_seq(nn.Module):
             self.model_dense_repeat.append(nn.Dropout(0.5))        
         self.linear=nn.Linear(params.dense_layer_size, 1)
         self.sigmoid=nn.Sigmoid()
-        
-        # debug
-        if False:
-            # initilization
-            print("Debug")
-            torch.nn.init.constant_(self.conv1d.weight,0.01)
-            torch.nn.init.constant_(self.conv1d.bias,0)
-            for name, param in self.lstm.named_parameters():
-                if 'weight' in name:
-                    nn.init.constant_(param,1e-5)
-                elif 'bias' in name:
-                    nn.init.constant_(param,0)
-            for names in self.lstm._all_weights:
-                for name in filter(lambda n: "bias_ih" in n,  names):
-                    bias = getattr(self.lstm, name)
-                    n = bias.size(0)
-                    start, end = n//4, n//2
-                    bias.data[start:end].fill_(1.)
-            for layer in self.model_dense_repeat:
-                if isinstance(layer, nn.Linear):
-                    torch.nn.init.constant_(layer.weight,0.03)
-                    torch.nn.init.constant_(layer.bias,0) 
-            torch.nn.init.constant_(self.linear.weight,0.04)
-            torch.nn.init.constant_(self.linear.bias,0)
-            
-              
+                          
     def forward(self,x):
         xs=self.conv1d(x)
         xs=self.relu(xs)
@@ -114,9 +87,6 @@ def train(model, train_path, val_path, batch_size, records_path):
     Returns:
         loss (ndarray): An array with the validation loss at each epoch
     """
-    
-#     adam = Adam(learning_rate=0.001)
-#     model.compile(loss='binary_crossentropy', optimizer=adam)
 
     loss_fn = torch.nn.BCELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
@@ -124,40 +94,20 @@ def train(model, train_path, val_path, batch_size, records_path):
     train_dataset = TFdataset(train_path, batch_size, "seqonly")
     val_dataset = TFdataset(val_path, batch_size, "seqonly")
 
-    ##################
-    # debug
-    if False:
-        print("Test start "+"#"*20)
-        _input=torch.Tensor([i*1e-5 for i in range(2*4*500)])
-    #     _input=torch.flip(_input,dims=(0,))
-        _input=torch.reshape(_input,(2,4,500))
-        print(_input)
-        model.train(False)
-        output=model(_input)
-        print(output)
-        print(torch.mean(output))
-    #     # save model
-    #     print(model.conv1d.weight)
-    #     print(model.conv1d.bias)
-    #     print(model.conv1d.weight.shape)
-    #     print(model.conv1d.bias.shape)
-        print("Test end "+"#"*20)
-    ##################
     
     def train_one_epoch(epoch_index):
         running_loss = 0.
         batch_avg_vloss = 0.
 
+        print(f"Total Parameters = {sum(p.numel() for p in model.parameters())}")
+        print(f"Total Trainable Parameters = {sum(p.numel() for p in model.parameters() if p.requires_grad)}")
+            
         # Here, we use enumerate(training_loader) instead of
         # iter(training_loader) so that we can track the batch
         # index and do some intra-epoch reporting
         for i, data in enumerate(train_dataset):
             # Every data instance is an input + label pair
             seq,chrom,target,labels = data
-            
-            print(seq.shape,chrom.shape)
-            print(f"Total Parameters = {sum(p.numel() for p in model.parameters())}")
-            print(f"Total Trainable Parameters = {sum(p.numel() for p in model.parameters() if p.requires_grad)}")
             
             # Zero your gradients for every batch!
             optimizer.zero_grad()
@@ -166,7 +116,6 @@ def train(model, train_path, val_path, batch_size, records_path):
             outputs = model(seq)
             labels=labels.to(torch.float32)
             # Compute the loss and its gradients
-#             print(outputs.dtype, labels.dtype)
             loss = loss_fn(outputs, labels)
             loss.backward()
 
@@ -177,12 +126,9 @@ def train(model, train_path, val_path, batch_size, records_path):
             running_loss += loss.item()
             batch_avg_vloss = running_loss / (i + 1) # loss per batch
             print('  batch {} loss: {}'.format(i + 1, batch_avg_vloss))
-#                 running_loss = 0.
 
         return batch_avg_vloss
     
-    # Initializing in a separate cell so we can easily add more epochs to the same run
-#     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     epoch = 0
 
     EPOCHS = 2

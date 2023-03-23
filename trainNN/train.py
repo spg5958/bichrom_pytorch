@@ -104,15 +104,9 @@ def train_bichrom(data_paths, outdir, seq_len, bin_size):
     print("Training seq")
     mseq_path = run_seq_network(train_path=data_paths['train_seq'], val_path=data_paths['val'], records_path=outdir, seq_len=seq_len)
 
-#     mseq_path=outdir + '/seqnet/' + "model_epoch1.hdf5"
-#     print(mseq_path)
-    
     # Train the bimodal network (M-SC)
     print("Training bichrom")
     msc_path = run_bimodal_network(train_path=data_paths['train_bichrom'], val_path=data_paths['val'], records_path=outdir, base_seq_model_path=mseq_path, bin_size=bin_size, seq_len=seq_len)
-
-#     msc_path=outdir + '/bichrom/' + "model_epoch1.hdf5"
-#     print(msc_path)
     
     # Evaluate both models on held-out test sets and plot metrics
     probas_out_seq = outdir + '/seqnet/' + 'test_probs.txt'

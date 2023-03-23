@@ -15,8 +15,6 @@ from datetime import datetime
 def TFdataset(path, batchsize, dataflag, bin_size):
     print(f"bin_size = {bin_size}")
     TFdataset_batched = iterutils.train_TFRecord_dataset(path, batchsize, dataflag, transforms={"chrom": lambda x:x.reshape((x.shape[0],bin_size,-1)).mean(axis=1).flatten()})
-#     s,c,_,_=next(iter(TFdataset_batched))
-#     print(f"chrom input shape = {c.shape}")
     return TFdataset_batched
 
 class _reshape(nn.Module):
@@ -56,7 +54,7 @@ class bimodal_network(nn.Module):
         self.base_model=base_model
         self.activation = {}
         def get_activation(name):
-            def hook(seq_model, input, output):
+            def hook(seq_model, _input, output):
                 self.activation[name] = output.detach()
             return hook
         self.base_model.model_dense_repeat[7].register_forward_hook(get_activation('dense_2'))
@@ -68,7 +66,7 @@ class bimodal_network(nn.Module):
         
     def forward(self,seq_input,chromatin_input):
         self.base_model(seq_input)
-        curr_tensor=self.activation['dense_2'] ########### requires_grad=False
+        curr_tensor=self.activation['dense_2']
         xs=self.linear(curr_tensor)
         xs=self.tanh(xs)
         xc=self.model(chromatin_input)
@@ -102,26 +100,18 @@ def transfer(train_path, val_path, basemodel, model,
     
     for param in basemodel.parameters():
         param.requires_grad = False
+        
+    ###########################
+    print("#"*20)
+    for name, param in model.named_parameters():
+        print(name, param.requires_grad)
+    print("#"*20)
+    ########################### 
     
     loss_fn = torch.nn.BCELoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9, nesterov=True)
     train_dataset = TFdataset(train_path, batchsize, "all", bin_size)
     val_dataset = TFdataset(val_path, batchsize, "all", bin_size)
-    
-#     layers=list(model.state_dict().keys())
-#     print(len(layers))
-#     print(len(list(model.parameters())))
-    for l,p in zip(model.state_dict().keys(), model.parameters()):
-        print(l,p.requires_grad)
-    ##################
-    print("Test start "+"#"*20)
-#     s,c,_,_=next(iter(train_dataset))
-#     print("chrom input shape = {c.shape}")
-#     output=model(torch.rand((2,4,500)),torch.rand((2,2,50)))
-#     print(output)
-    print("Test end "+"#"*20)
-    ##################
-    
     
     def train_one_epoch(epoch_index):
         running_loss = 0.
@@ -144,7 +134,7 @@ def transfer(train_path, val_path, basemodel, model,
             optimizer.zero_grad()
 
             # Make predictions for this batch
-            outputs = model(seq,chrom)#(torch.rand(512,4,1000),torch.randn(512,2,500))#(seq,chrom)
+            outputs = model(seq,chrom)
             labels=labels.to(torch.float32) 
             # Compute the loss and its gradients
             loss = loss_fn(outputs, labels)
@@ -157,7 +147,7 @@ def transfer(train_path, val_path, basemodel, model,
             running_loss += loss.item()
             batch_avg_vloss = running_loss / (i+1) # loss per batch
             print('  batch {} loss: {}'.format(i + 1, batch_avg_vloss))
-#                 running_loss = 0.
+
         
 #             w2=model.state_dict()['base_model.linear.weight']
 #             w4=model.state_dict()['model.linear.weight']
@@ -183,7 +173,6 @@ def transfer(train_path, val_path, basemodel, model,
         print('EPOCH {}:'.format(epoch + 1))
 
         # Make sure gradient tracking is on, and do a pass over the data
-        
         print(model)
                 
         model.train(True)
