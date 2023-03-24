@@ -178,8 +178,8 @@ def train(model, train_path, val_path, batch_size, records_path):
 
             avg_vloss = running_vloss / (i + 1)
             print('LOSS train {} valid {}'.format(avg_loss, avg_vloss))
-            val_predictions.append(voutputs.detach().numpy())
-            val_labels.append(vlabels)
+            val_predictions.append(voutputs.cpu().detach().numpy())
+            val_labels.append(vlabels.cpu().detach().numpy())
             
         torch.save(model.state_dict(), records_path+'model_epoch{}.hdf5'.format(epoch+1))    
         hist["loss"].append(avg_loss)
