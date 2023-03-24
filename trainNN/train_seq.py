@@ -75,6 +75,13 @@ def save_metrics(hist_object, pr_history, records_path):
     
 # NOTE: ADDING A RECORDS PATH HERE!
 def train(model, train_path, val_path, batch_size, records_path):
+    
+    # GPU
+    device = torch.device("mps")
+    
+    # transfer model to GPU
+    model.to(device)
+    
     """
     Train the Keras graph model
     Parameters:
@@ -108,6 +115,9 @@ def train(model, train_path, val_path, batch_size, records_path):
         for i, data in enumerate(train_dataset):
             # Every data instance is an input + label pair
             seq,chrom,target,labels = data
+            
+            # transfer data to GPU
+            seq, labels = seq.to(device), labels.to(device)
             
             # Zero your gradients for every batch!
             optimizer.zero_grad()
@@ -156,6 +166,10 @@ def train(model, train_path, val_path, batch_size, records_path):
         val_labels=[]
         for i, vdata in enumerate(val_dataset):
             vseq,vchrom,vtarget,vlabels = vdata
+            
+            # transfer datat GPU
+            vseq, vlabels = vseq.to(device), vlabels.to(device)
+            
             voutputs = model(vseq)
             vlabels=vlabels.to(torch.float32)
             
