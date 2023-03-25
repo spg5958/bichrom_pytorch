@@ -12,9 +12,21 @@ from train_seq import bichrom_seq,build_model
 from datetime import datetime
 
 
+# def transforms(x,bin_size=50):
+#         return x.reshape((x.shape[0],bin_size,-1)).mean(axis=1).flatten()
+    
 def TFdataset(path, batchsize, dataflag, bin_size):
-    print(f"bin_size = {bin_size}")
+    
+        
     TFdataset_batched = iterutils.train_TFRecord_dataset(path, batchsize, dataflag, transforms={"chrom": lambda x:x.reshape((x.shape[0],bin_size,-1)).mean(axis=1).flatten()})
+    
+#     def transforms(x,bin_size=50):
+#         return x.reshape((x.shape[0],bin_size,-1)).mean(axis=1).flatten()
+    
+#     TFdataset_batched = iterutils.train_TFRecord_dataset(path, batchsize, dataflag, transforms={"chrom": transforms})
+    
+#     TFdataset_batched = iterutils.train_TFRecord_dataset(path, batchsize, dataflag)
+    
     return TFdataset_batched
 
 class _reshape(nn.Module):

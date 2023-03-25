@@ -3,11 +3,12 @@ to enable whole genome iteration """
 
 import h5py
 import numpy as np
-# import tensorflow as tf
 
 from collections import defaultdict
 
 from seqchromloader import SeqChromDatasetByBed
+
+import torch
 
 class Sequence:
     dic = {
@@ -125,24 +126,22 @@ def train_TFRecord_dataset(dspath, batchsize, dataflag, shuffle=True, drop_remai
     
     loader=None
     
-    print("="*20)
-    print(dspath["chromatin_tracks"])
-    
     genome="../../data/sample_data/mm10.fa"
     chromtracks=dspath["chromatin_tracks"]
-#     chromtracks=["../sample_data/GSE80482_h3k27ac-0h.bw", \
-#                  "../sample_data/GSE80482_h3k27ac-12h.bw"]
-    dataloader_kws={"num_workers":8,"batch_size":batchsize}
-    
-#     transforms={"chrom": lambda x:print(x.shape)}
 
-    loader=SeqChromDatasetByBed(dspath["TFRecord"],genome,chromtracks,transforms=transforms,dataloader_kws=dataloader_kws )
-
-#     if dataflag=="seqonly":
-#         loader=SeqChromDatasetByBed(dspath["TFRecord"],genome,chromtracks,dataloader_kws=dataloader_kws)
-#     else:
-#         loader=SeqChromDatasetByBed(dspath["TFRecord"],genome,chromtracks,dataloader_kws=dataloader_kws)
-#         return {"seq":seq, "chrom_input":combined_chromatin_data}, label
+    dataloader_kws={"num_workers":4,"batch_size":batchsize}
+    loader=SeqChromDatasetByBed(dspath["TFRecord"],genome,chromtracks,transforms=transforms,dataloader_kws=dataloader_kws)
 
     return loader
     
+
+def getDevice():
+    device = None
+    if torch.cuda.is_available():
+        device = "cuda:0"
+    elif torch.backends.mps.is_available():
+        device = "mps"
+    else:
+        device = "cpu"
+    print(f"DEVICE = {device}")
+    return device

@@ -4,3 +4,4 @@ archive/*
 __pycache__/
 *.bw
 *.TFRecord
+.ipynb_checkpoints/

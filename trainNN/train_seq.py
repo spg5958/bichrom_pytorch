@@ -77,7 +77,7 @@ def save_metrics(hist_object, pr_history, records_path):
 def train(model, train_path, val_path, batch_size, records_path):
     
     # GPU
-    device = torch.device("mps")
+    device = iterutils.getDevice()
     
     # transfer model to GPU
     model.to(device)
