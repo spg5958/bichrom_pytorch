@@ -11,21 +11,18 @@ from torch import nn
 from train_seq import bichrom_seq,build_model
 from datetime import datetime
 
+from functools import partial
 
-# def transforms(x,bin_size=50):
-#         return x.reshape((x.shape[0],bin_size,-1)).mean(axis=1).flatten()
+
+def transforms(x,bin_size):
+    return x.reshape((x.shape[0],bin_size,-1)).mean(axis=1).flatten()
+    
     
 def TFdataset(path, batchsize, dataflag, bin_size):
-    
         
-    TFdataset_batched = iterutils.train_TFRecord_dataset(path, batchsize, dataflag, transforms={"chrom": lambda x:x.reshape((x.shape[0],bin_size,-1)).mean(axis=1).flatten()})
+    transform_frozen = partial(transforms, bin_size = bin_size)
     
-#     def transforms(x,bin_size=50):
-#         return x.reshape((x.shape[0],bin_size,-1)).mean(axis=1).flatten()
-    
-#     TFdataset_batched = iterutils.train_TFRecord_dataset(path, batchsize, dataflag, transforms={"chrom": transforms})
-    
-#     TFdataset_batched = iterutils.train_TFRecord_dataset(path, batchsize, dataflag)
+    TFdataset_batched = iterutils.train_TFRecord_dataset(path, batchsize, dataflag, transforms={"chrom": transform_frozen})
     
     return TFdataset_batched
 

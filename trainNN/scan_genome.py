@@ -14,11 +14,19 @@ import iterutils
 from helper import plot_distributions
 
 
+from functools import partial
+
+
+def transforms(x,bin_size):
+    return x.reshape((x.shape[0],bin_size,-1)).mean(axis=1).flatten()
+
+
 def TFdataset(path, batchsize, dataflag, bin_size):
+    
+    transform_frozen = partial(transforms, bin_size = bin_size)
+    
+    TFdataset_batched = iterutils.train_TFRecord_dataset(path, batchsize, dataflag, shuffle=False, drop_remainder=False, transforms={"chrom": transform_frozen})
 
-    TFdataset_batched = iterutils.train_TFRecord_dataset(path, batchsize, dataflag, shuffle=False, drop_remainder=False, transforms={"chrom": lambda x:x.reshape((x.shape[0],bin_size,-1)).mean(axis=1).flatten()})
-
-#     print(next(iter(TFdataset_batched)))
     return TFdataset_batched
 
 
