@@ -99,14 +99,18 @@ def train(model, train_path, val_path, batch_size, records_path):
     
     train_dataset = TFdataset(train_path, batch_size, "seqonly")
     val_dataset = TFdataset(val_path, batch_size, "seqonly")
-
+    
+    ###########################
+    print("#"*20)
+    print(f"Total Parameters = {sum(p.numel() for p in model.parameters())}")
+    print(f"Total Trainable Parameters = {sum(p.numel() for p in model.parameters() if p.requires_grad)}")
+    print(model)
+    print("#"*20)
+    ###########################
     
     def train_one_epoch(epoch_index):
         running_loss = 0.
         batch_avg_vloss = 0.
-
-        print(f"Total Parameters = {sum(p.numel() for p in model.parameters())}")
-        print(f"Total Trainable Parameters = {sum(p.numel() for p in model.parameters() if p.requires_grad)}")
             
         # Here, we use enumerate(training_loader) instead of
         # iter(training_loader) so that we can track the batch
@@ -151,7 +155,6 @@ def train(model, train_path, val_path, batch_size, records_path):
         
         print('EPOCH {}:'.format(epoch + 1))
 
-        print(model)
         # Make sure gradient tracking is on, and do a pass over the data
         model.train(True)
         avg_loss = train_one_epoch(epoch)
@@ -209,6 +212,4 @@ if __name__ == '__main__':
     records_path="train_out/seqnet/"
     from train import Params
     model=build_model(params=Params(), seq_length=500)
-    for l,p in zip(model.state_dict().keys(), model.parameters()):
-        print(l,p.requires_grad)
     torch.save(model.state_dict(), records_path+'model_epoch1.hdf5')

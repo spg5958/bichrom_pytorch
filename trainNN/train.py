@@ -93,13 +93,12 @@ def run_bimodal_network(train_path, val_path, records_path, base_seq_model_path,
 
     # choose the model with the lowest validation loss
     # loss, bimodal_val_pr = np.loadtxt(records_path_sc + 'trainingLoss.txt')
-    print(f"bimodal_val = {bimodal_val_pr}")
+    
     model_sc = return_best_model(pr_vec=bimodal_val_pr, model_path=records_path_sc)
     return model_sc
 
 
 def train_bichrom(data_paths, outdir, seq_len, bin_size):
-    print(data_paths)
     # Train the sequence-only network (M-SEQ)
     print("Training seq")
     mseq_path = run_seq_network(train_path=data_paths['train_seq'], val_path=data_paths['val'], records_path=outdir, seq_len=seq_len)

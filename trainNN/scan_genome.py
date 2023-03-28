@@ -131,7 +131,6 @@ def combine_pr_curves(records_file, m_seq_probas, m_sc_probas, labels):
 def evaluate_models(path, probas_out_seq, probas_out_sc,
                     model_seq, model_sc, records_file_path, bin_size):
 
-    print(f"-->{path}")
     
     # Define the file that contains testing metrics
     records_files = open(records_file_path + '.txt', "w")

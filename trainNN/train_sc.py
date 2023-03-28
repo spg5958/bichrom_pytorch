@@ -79,7 +79,7 @@ class bimodal_network(nn.Module):
         xs=self.linear(curr_tensor)
         xs=self.tanh(xs)
         xc=self.model(chromatin_input)
-        xsc = torch.cat((xs, xc), dim=1)
+        xsc=torch.cat((xs, xc), dim=1)
         xsc=self.linear2(xsc)
         result=self.sigmoid(xsc)
         return result
@@ -119,6 +119,9 @@ def transfer(train_path, val_path, basemodel, model,
         
     ###########################
     print("#"*20)
+    print(f"Total Parameters = {sum(p.numel() for p in model.parameters())}")
+    print(f"Total Trainable Parameters = {sum(p.numel() for p in model.parameters() if p.requires_grad)}")
+    print(model)
     for name, param in model.named_parameters():
         print(name, param.requires_grad)
     print("#"*20)
@@ -138,14 +141,11 @@ def transfer(train_path, val_path, basemodel, model,
         # index and do some intra-epoch reporting
         for i, data in enumerate(train_dataset):
             
-            print(f"Total Parameters = {sum(p.numel() for p in model.parameters())}")
-            print(f"Total Trainable Parameters = {sum(p.numel() for p in model.parameters() if p.requires_grad)}")
+            
             
             ###########################
-            print("#"*20)
             w1=model.state_dict()['base_model.linear.weight']
             w3=model.state_dict()['model.conv1d.weight']
-            print("#"*20)
             ###########################
             
             # Every data instance is an input + label pair
@@ -200,9 +200,7 @@ def transfer(train_path, val_path, basemodel, model,
     for epoch in range(EPOCHS):
         print('EPOCH {}:'.format(epoch + 1))
 
-        # Make sure gradient tracking is on, and do a pass over the data
-        print(model)
-                
+        # Make sure gradient tracking is on, and do a pass over the data               
         model.train(True)
         avg_loss = train_one_epoch(epoch)
 
