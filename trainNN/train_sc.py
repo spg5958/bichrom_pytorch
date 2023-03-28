@@ -107,6 +107,13 @@ def save_metrics(hist_object, pr_history, records_path):
 def transfer(train_path, val_path, basemodel, model,
              batchsize, records_path, bin_size):
     
+    # GPU
+    device = iterutils.getDevice()
+    
+    # transfer model to GPU
+    basemodel.to(device)
+    model.to(device)
+    
     for param in basemodel.parameters():
         param.requires_grad = False
         
@@ -143,6 +150,10 @@ def transfer(train_path, val_path, basemodel, model,
             
             # Every data instance is an input + label pair
             seq,chrom,target,labels = data
+            
+            # transfer data to GPU
+            seq, chrom, labels = seq.to(device), chrom.to(device), labels.to(device)
+            
             # Zero your gradients for every batch!
             optimizer.zero_grad()
 
@@ -204,6 +215,10 @@ def transfer(train_path, val_path, basemodel, model,
         val_labels=[]
         for i, vdata in enumerate(val_dataset):
             vseq,vchrom,vtarget,vlabels = vdata
+            
+            # transfer datat GPU
+            vseq, vchrom, vlabels = vseq.to(device), vchrom.to(device), vlabels.to(device)
+            
             voutputs = model(vseq,vchrom)
             vlabels=vlabels.to(torch.float32)
             
@@ -211,8 +226,8 @@ def transfer(train_path, val_path, basemodel, model,
             running_vloss += float(vloss)
             avg_vloss = running_vloss / (i + 1)
             print('LOSS train {} valid {}'.format(avg_loss, avg_vloss))
-            val_predictions.append(voutputs.detach().numpy())
-            val_labels.append(vlabels)
+            val_predictions.append(voutputs.cpu().detach().numpy())
+            val_labels.append(vlabels.cpu().detach().numpy())
    
         torch.save(model.state_dict(), records_path+'model_epoch{}.hdf5'.format(epoch+1))
         hist["loss"].append(avg_loss)
