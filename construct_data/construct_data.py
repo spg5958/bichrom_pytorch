@@ -180,7 +180,7 @@ def construct_test_set(genome_sizes_file, genome_fasta_file, peaks_file, blackli
                                 .assign(label=0, type="neg_chop"))
     
     
-    test_coords = pd.concat([bound_chip_peaks, unbound_genome_chop]).sample(frac=0.02)
+    test_coords = pd.concat([bound_chip_peaks, unbound_genome_chop]).sample(frac=1)
     
     print(test_coords.head())
 #     col_list = list(test_coords)
