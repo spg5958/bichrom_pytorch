@@ -141,8 +141,6 @@ def transfer(train_path, val_path, basemodel, model,
         # index and do some intra-epoch reporting
         for i, data in enumerate(train_dataset):
             
-            
-            
             ###########################
             w1=model.state_dict()['base_model.linear.weight']
             w3=model.state_dict()['model.conv1d.weight']
@@ -188,9 +186,7 @@ def transfer(train_path, val_path, basemodel, model,
     # Initializing in a separate cell so we can easily add more epochs to the same run
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 
-    epoch = 0
-
-    EPOCHS = 2
+    EPOCHS = 15
 
     best_vloss = 1_000_000.
 
