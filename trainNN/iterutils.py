@@ -126,7 +126,7 @@ def train_TFRecord_dataset(dspath, batchsize, dataflag, shuffle=True, drop_remai
     
     loader=None
     
-    genome="../../data/sample_data/mm10.fa"
+    genome="/storage/home/spg5958/group/genomes/mm10/mm10.fa"
     chromtracks=dspath["chromatin_tracks"]
 
     dataloader_kws={"num_workers":4,"batch_size":batchsize}
