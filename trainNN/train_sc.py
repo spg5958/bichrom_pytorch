@@ -2,7 +2,7 @@ import h5py
 import numpy as np
 import pandas as pd
 
-from sklearn.metrics import average_precision_score as auprc
+from sklearn.metrics import precision_recall_curve, auc
 
 import iterutils
 
@@ -124,6 +124,9 @@ def transfer(train_path, val_path, basemodel, model,
     print(model)
     for name, param in model.named_parameters():
         print(name, param.requires_grad)
+        
+    w1=model.state_dict()['base_model.linear.weight']
+    w3=model.state_dict()['model.conv1d.weight']
     print("#"*20)
     ########################### 
     
@@ -131,7 +134,7 @@ def transfer(train_path, val_path, basemodel, model,
     optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9, nesterov=True)
     train_dataset = TFdataset(train_path, batchsize, "all", bin_size)
     val_dataset = TFdataset(val_path, batchsize, "all", bin_size)
-    
+            
     def train_one_epoch(epoch_index):
         running_loss = 0.
         batch_avg_vloss = 0.
@@ -141,10 +144,7 @@ def transfer(train_path, val_path, basemodel, model,
         # index and do some intra-epoch reporting
         for i, data in enumerate(train_dataset):
             
-            ###########################
-            w1=model.state_dict()['base_model.linear.weight']
-            w3=model.state_dict()['model.conv1d.weight']
-            ###########################
+            
             
             # Every data instance is an input + label pair
             seq,chrom,target,labels = data
@@ -186,7 +186,7 @@ def transfer(train_path, val_path, basemodel, model,
     # Initializing in a separate cell so we can easily add more epochs to the same run
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 
-    EPOCHS = 15
+    EPOCHS = 2
 
     best_vloss = 1_000_000.
 
@@ -228,7 +228,8 @@ def transfer(train_path, val_path, basemodel, model,
         hist["val_loss"].append(avg_vloss)
         predictions=np.concatenate(val_predictions)
         labels=np.concatenate(val_labels)
-        aupr = auprc(labels, predictions)
+        precision, recall, thresholds = precision_recall_curve(labels, predictions)
+        aupr = auc(recall, precision)
         precision_recall_history["val_auprc"].append(aupr)
         epoch += 1
     

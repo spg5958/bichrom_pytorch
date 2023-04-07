@@ -1,7 +1,7 @@
 import h5py
 import numpy as np
 
-from sklearn.metrics import average_precision_score as auprc
+from sklearn.metrics import precision_recall_curve, auc
 
 import os
 
@@ -142,7 +142,7 @@ def train(model, train_path, val_path, batch_size, records_path):
 
         return batch_avg_vloss
 
-    EPOCHS = 15
+    EPOCHS = 2
 
     best_vloss = 1_000_000.
 
@@ -186,7 +186,10 @@ def train(model, train_path, val_path, batch_size, records_path):
         hist["val_loss"].append(avg_vloss)
         predictions=np.concatenate(val_predictions)
         labels=np.concatenate(val_labels)
-        aupr = auprc(labels, predictions)
+        
+        precision, recall, thresholds = precision_recall_curve(labels, predictions)
+        aupr = auc(recall, precision)
+
         precision_recall_history["val_auprc"].append(aupr)
         
         epoch += 1
