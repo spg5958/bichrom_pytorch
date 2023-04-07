@@ -186,7 +186,7 @@ def transfer(train_path, val_path, basemodel, model,
     # Initializing in a separate cell so we can easily add more epochs to the same run
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 
-    EPOCHS = 2
+    EPOCHS = 15
 
     best_vloss = 1_000_000.
 

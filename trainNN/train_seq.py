@@ -142,7 +142,7 @@ def train(model, train_path, val_path, batch_size, records_path):
 
         return batch_avg_vloss
 
-    EPOCHS = 2
+    EPOCHS = 15
 
     best_vloss = 1_000_000.
 
