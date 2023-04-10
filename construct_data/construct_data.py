@@ -147,10 +147,12 @@ def construct_training_set(genome_sizes_file, genome_fasta_file, peaks_file, bla
     train_coords_seq, train_coords_bichrom = define_training_coordinates(chip_seq_coordinates, genome_sizes_file, acc_bdt, curr_genome_bdt,
                                 blacklist_bdt, window_length, len(chip_seq_coordinates)*5, [450, -450, 500, -500, 1250, -1250, 1750, -1750], None, None)
     
+    # switch columns
     col_list = list(train_coords_seq)
     col_list[-2], col_list[-1] = col_list[-1], col_list[-2]
     train_coords_seq = train_coords_seq[col_list]
     
+    # switch columns
     col_list = list(train_coords_bichrom)
     col_list[-2], col_list[-1] = col_list[-1], col_list[-2]
     train_coords_bichrom = train_coords_bichrom[col_list]
@@ -256,7 +258,7 @@ def main():
 
     print([x.split('/')[-1].split('.')[0] for x in args.chromtracks])
 
-    print('Constructing train data ...')
+    print('-->Constructing train data ...')
     TFRecords_train_seq, TFRecords_train_bichrom = construct_training_set(genome_sizes_file=args.info, genome_fasta_file=args.fa,
                                     peaks_file=args.peaks,
                                     blacklist_file=args.blacklist, window_length=args.len,
@@ -267,7 +269,7 @@ def main():
                                     chromatin_track_list=args.chromtracks,
                                     nbins=args.nbins, p=args.p)
 
-    print('Constructing validation data ...')
+    print('-->Constructing validation data ...')
     TFRecords_val = construct_test_set(genome_sizes_file=args.info,
                         peaks_file=args.peaks,
                         genome_fasta_file=args.fa,
@@ -277,7 +279,7 @@ def main():
                         out_prefix=args.outdir + '/data_val',
                         chromatin_track_list=args.chromtracks, nbins=args.nbins, p=args.p)
 
-    print('Constructing test data ...')
+    print('-->Constructing test data ...')
     TFRecords_test = construct_test_set(genome_sizes_file=args.info,
                         peaks_file=args.peaks,
                         genome_fasta_file=args.fa,

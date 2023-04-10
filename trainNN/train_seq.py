@@ -34,11 +34,11 @@ class bichrom_seq(nn.Module):
         self.model_dense_repeat = nn.Sequential()
         self.model_dense_repeat.append(nn.Linear(params.lstm_out, params.dense_layer_size))
         self.model_dense_repeat.append(nn.ReLU())
-        self.model_dense_repeat.append(nn.Dropout(0.5))
+        self.model_dense_repeat.append(nn.Dropout(params.dropout))
         for idx in range(params.dense_layers-1):
             self.model_dense_repeat.append(nn.Linear(params.dense_layer_size, params.dense_layer_size))
             self.model_dense_repeat.append(nn.ReLU())
-            self.model_dense_repeat.append(nn.Dropout(0.5))        
+            self.model_dense_repeat.append(nn.Dropout(params.dropout))        
         self.linear=nn.Linear(params.dense_layer_size, 1)
         self.sigmoid=nn.Sigmoid()
                           
@@ -142,7 +142,7 @@ def train(model, train_path, val_path, batch_size, records_path):
 
         return batch_avg_vloss
 
-    EPOCHS = 15
+    EPOCHS = 30
 
     best_vloss = 1_000_000.
 

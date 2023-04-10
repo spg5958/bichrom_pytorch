@@ -7,6 +7,7 @@
 #PBS -l pmem=40gb
 #PBS -A sam77_i_g_gc_default
 
+SECONDS=0
 
 conda activate pytorch
 
@@ -27,3 +28,6 @@ module load cuda/10.2.89
 nvidia-smi
 
 python ../run_bichrom.py -training_schema_yaml ../../../data/Ascl1_12hr_real/trainig_data/bichrom.yaml -len 500 -outdir train_out -nbins 10
+
+ELAPSED="Elapsed: $(($SECONDS / 3600))hrs $((($SECONDS / 60) % 60))min $(($SECONDS % 60))sec"
+echo $ELAPSED
