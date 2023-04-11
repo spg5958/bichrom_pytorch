@@ -105,7 +105,7 @@ def save_metrics(hist_object, pr_history, records_path):
 
 
 def transfer(train_path, val_path, basemodel, model,
-             batchsize, records_path, bin_size):
+             batchsize, records_path, bin_size, epochs):
     
     # GPU
     device = iterutils.getDevice()
@@ -186,7 +186,8 @@ def transfer(train_path, val_path, basemodel, model,
     # Initializing in a separate cell so we can easily add more epochs to the same run
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 
-    EPOCHS = 30
+    print(f"Epochs = {epochs}")
+    EPOCHS = epochs
 
     best_vloss = 1_000_000.
 
@@ -239,11 +240,11 @@ def transfer(train_path, val_path, basemodel, model,
 
 
 def transfer_and_train_msc(train_path, val_path, base_model_path,
-                           batch_size, records_path, bin_size, seq_len, params):
+                           batch_size, records_path, bin_size, seq_len, params, epochs):
 
     # Calculate number of chromatin tracks
     no_of_chrom_tracks = len(train_path['chromatin_tracks'])
     model, basemodel = add_new_layers(base_model_path, seq_len, no_of_chrom_tracks, bin_size, params)
     loss, val_pr = transfer(train_path, val_path, basemodel, model,
-                    batch_size, records_path, bin_size)
+                    batch_size, records_path, bin_size, epochs=epochs)
     return loss, val_pr

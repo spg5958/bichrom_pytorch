@@ -73,7 +73,7 @@ def save_metrics(hist_object, pr_history, records_path):
     
     
 # NOTE: ADDING A RECORDS PATH HERE!
-def train(model, train_path, val_path, batch_size, records_path):
+def train(model, train_path, val_path, batch_size, records_path, epochs):
     
     # GPU
     device = iterutils.getDevice()
@@ -142,7 +142,8 @@ def train(model, train_path, val_path, batch_size, records_path):
 
         return batch_avg_vloss
 
-    EPOCHS = 30
+    print(f"Epochs = {epochs}")
+    EPOCHS = epochs
 
     best_vloss = 1_000_000.
 
@@ -200,12 +201,12 @@ def train(model, train_path, val_path, batch_size, records_path):
 
 
 def build_and_train_net(hyperparams, train_path, val_path, batch_size,
-                        records_path, seq_len):
+                        records_path, seq_len, epochs):
 
     model = build_model(params=hyperparams, seq_length=seq_len)
 
     loss, val_pr = train(model, train_path=train_path, val_path=val_path,
-                        batch_size=batch_size, records_path=records_path)
+                        batch_size=batch_size, records_path=records_path, epochs=epochs)
 
     return loss, val_pr
 

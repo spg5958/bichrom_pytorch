@@ -129,30 +129,64 @@ def combine_pr_curves(records_file, m_seq_probas, m_sc_probas, labels):
 
     
 def evaluate_models(path, probas_out_seq, probas_out_sc,
-                    model_seq, model_sc, records_file_path, bin_size):
-
+                    model_seq, model_sc, records_file_path, bin_size, net):
     
-    # Define the file that contains testing metrics
-    records_files = open(records_file_path + '.txt', "w")
+    print(f"Selected network (scan_genome.py) = {net}")
+    
+    if net == 'seq':
+        print("seq selected")
+           # Define the file that contains testing metrics
+        records_files = open(records_file_path + '.txt', "w")
 
-    # Get the probabilities for both M-SEQ and M-SC models:
-    # Note: Labels are the same for M-SC and M-SEQ
-    true_labels, probas_seq = get_probabilities(path=path,
-                                                model=model_seq,
-                                                outfile=probas_out_seq,
-                                                mode='seqonly',bin_size=bin_size)
+        # Get the probabilities for both M-SEQ and M-SC models:
+        # Note: Labels are the same for M-SC and M-SEQ
+        true_labels, probas_seq = get_probabilities(path=path,
+                                                    model=model_seq,
+                                                    outfile=probas_out_seq,
+                                                    mode='seqonly',bin_size=bin_size)
 
-    _, probas_sc = get_probabilities(path=path, 
-                                     model=model_sc, outfile=probas_out_sc,
-                                     mode='all',bin_size=bin_size)
 
-    # Get the auROC and the auPRC for both M-SEQ and M-SC models:
-    get_metrics(true_labels, probas_seq, records_files, 'MSEQ')
-    get_metrics(true_labels, probas_sc, records_files, 'MSC')
+        # Get the auROC and the auPRC for both M-SEQ and M-SC models:
+        get_metrics(true_labels, probas_seq, records_files, 'MSEQ')
 
-    # Plot the P-R curves
-    combine_pr_curves(records_file_path, probas_seq, probas_sc, true_labels)
+    elif net == 'chrom':
+        print("chrom selected")
+        # Define the file that contains testing metrics
+        records_files = open(records_file_path + '.txt', "w")
 
-    # Plot the posterior distributions of the recall:
-    plot_distributions(records_file_path, probas_seq, probas_sc, true_labels,
-                       fpr_thresh=0.01)
+        # Get the probabilities for both M-SEQ and M-SC models:
+        # Note: Labels are the same for M-SC and M-SEQ
+
+        true_labels, probas_sc = get_probabilities(path=path, 
+                                         model=model_sc, outfile=probas_out_sc,
+                                         mode='all',bin_size=bin_size)
+
+        # Get the auROC and the auPRC for both M-SEQ and M-SC models:
+        get_metrics(true_labels, probas_sc, records_files, 'MSC')
+
+    else:
+        print("bimodal selected")
+        # Define the file that contains testing metrics
+        records_files = open(records_file_path + '.txt', "w")
+
+        # Get the probabilities for both M-SEQ and M-SC models:
+        # Note: Labels are the same for M-SC and M-SEQ
+        true_labels, probas_seq = get_probabilities(path=path,
+                                                    model=model_seq,
+                                                    outfile=probas_out_seq,
+                                                    mode='seqonly',bin_size=bin_size)
+
+        _, probas_sc = get_probabilities(path=path, 
+                                         model=model_sc, outfile=probas_out_sc,
+                                         mode='all',bin_size=bin_size)
+
+        # Get the auROC and the auPRC for both M-SEQ and M-SC models:
+        get_metrics(true_labels, probas_seq, records_files, 'MSEQ')
+        get_metrics(true_labels, probas_sc, records_files, 'MSC')
+
+        # Plot the P-R curves
+        combine_pr_curves(records_file_path, probas_seq, probas_sc, true_labels)
+
+        # Plot the posterior distributions of the recall:
+        plot_distributions(records_file_path, probas_seq, probas_sc, true_labels,
+                           fpr_thresh=0.01)

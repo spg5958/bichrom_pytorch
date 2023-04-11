@@ -14,11 +14,12 @@ import utils
 
 import os
 
+
 def define_training_coordinates(chip_coords: pd.DataFrame, genome_sizes_file: str,
                                 acc_bdt: BedTool, curr_genome_bdt: BedTool,
                                 blacklist_bdt: BedTool, L,
                                 bound_shift: int, unbound_flank_dists: list, unbound_random_acc: int, 
-                                unbound_random_inacc: int):
+                                unbound_random_inacc: int, frac=1.0):
     """
     Use the chip-seq peak file and the blacklist files to define a bound
     set and an unbound set of sites. The ratio of bound to unbound is 1:N,
@@ -67,7 +68,6 @@ def define_training_coordinates(chip_coords: pd.DataFrame, genome_sizes_file: st
 
         logging.debug(f"# Unbound flank sample: 0")
     
-
     # NEG. SAMPLES: ACCESSIBLE
     unbound_acc_df = (utils.random_coords(gs=genome_sizes_file,
                                         l=L, 
@@ -118,11 +118,13 @@ def define_training_coordinates(chip_coords: pd.DataFrame, genome_sizes_file: st
     logging.debug(f"training coordinates negative samples in inaccessible regions: {training_coords_seq_neg_inacc.shape[0]}")
 
     training_coords_seq = pd.concat([bound_sample_shift, training_coords_seq_neg_acc, training_coords_seq_neg_inacc])
-    training_coords_seq = training_coords_seq.sample(frac=1) # randomly shuffle the dataFrame
+    
+    print(f"Fraction = {frac}")
+    training_coords_seq = training_coords_seq.sample(frac=frac) # randomly shuffle the dataFrame
 
     # TRAINING SET FOR BICHROM NETWORK
     training_coords_bichrom = pd.concat([bound_sample_shift, unbound_genome_df])
-    training_coords_bichrom = training_coords_bichrom.sample(frac=1) # randomly shuffle the dataFrame
+    training_coords_bichrom = training_coords_bichrom.sample(frac=frac) # randomly shuffle the dataFrame
 
     # logging summary
     logging.debug(training_coords_seq.groupby(["label", "type"]).size())
@@ -131,7 +133,7 @@ def define_training_coordinates(chip_coords: pd.DataFrame, genome_sizes_file: st
     return training_coords_seq, training_coords_bichrom
 
 def construct_training_set(genome_sizes_file, genome_fasta_file, peaks_file, blacklist_file, to_keep, to_filter,
-                            window_length, acc_regions_file, out_prefix, chromatin_track_list, nbins, p=1):
+                            window_length, acc_regions_file, out_prefix, chromatin_track_list, nbins, p=1, frac=1.0):
 
     # prepare files for defining coordiantes
     curr_genome_bdt = utils.get_genome_sizes(genome_sizes_file, to_keep=to_keep, to_filter=to_filter)
@@ -145,7 +147,7 @@ def construct_training_set(genome_sizes_file, genome_fasta_file, peaks_file, bla
 
     # get the coordinates for training samples
     train_coords_seq, train_coords_bichrom = define_training_coordinates(chip_seq_coordinates, genome_sizes_file, acc_bdt, curr_genome_bdt,
-                                blacklist_bdt, window_length, len(chip_seq_coordinates)*5, [450, -450, 500, -500, 1250, -1250, 1750, -1750], None, None)
+                                blacklist_bdt, window_length, len(chip_seq_coordinates)*5, [450, -450, 500, -500, 1250, -1250, 1750, -1750], None, None, frac=frac)
     
     # switch columns
     col_list = list(train_coords_seq)
@@ -161,10 +163,11 @@ def construct_training_set(genome_sizes_file, genome_fasta_file, peaks_file, bla
     train_coords_bichrom.to_csv(out_prefix + "_bichrom.bed", header=False, index=False, sep="\t")
 
 
-    return os.getcwd()+"/"+out_prefix + "_seq.bed", os.getcwd()+"/"+out_prefix + "_bichrom.bed"
+    #return os.getcwd()+"/"+out_prefix + "_seq.bed", os.getcwd()+"/"+out_prefix + "_bichrom.bed"
+    return out_prefix + "_seq.bed", out_prefix + "_bichrom.bed"
 
 def construct_test_set(genome_sizes_file, genome_fasta_file, peaks_file, blacklist_file, to_keep,
-                        window_length, stride, out_prefix, chromatin_track_list, nbins, p=1):
+                        window_length, stride, out_prefix, chromatin_track_list, nbins, p=1, frac=1.0):
 
     # prepare file for defining coordinates
     blacklist_bdt = BedTool(blacklist_file)
@@ -181,21 +184,15 @@ def construct_test_set(genome_sizes_file, genome_fasta_file, peaks_file, blackli
     unbound_genome_chop = (utils.chop_genome(genome_sizes_file, to_keep, excl=bound_chip_peaks_bdt.cat(blacklist_bdt), stride=stride, l=window_length)
                                 .assign(label=0, type="neg_chop"))
     
-    
-    test_coords = pd.concat([bound_chip_peaks, unbound_genome_chop]).sample(frac=1)
+    print(f"Fraction = {frac}")
+    test_coords = pd.concat([bound_chip_peaks, unbound_genome_chop]).sample(frac=frac)
     
     print(test_coords.head())
-#     col_list = list(test_coords)
-#     col_list[-2], col_list[-1] = col_list[-1], col_list[-2]
-#     test_coords = test_coords[col_list]
-#     print(test_coords.head())
     
     test_coords.to_csv(out_prefix + ".bed", header=False, index=False, sep="\t")
 
-    
-
-
-    return os.getcwd()+"/"+out_prefix + ".bed"
+    #return os.getcwd()+"/"+out_prefix + ".bed"
+    return out_prefix + ".bed"
 
 def main():
 
@@ -224,6 +221,8 @@ def main():
 
     parser.add_argument('-test_chroms', default=['chr17'], nargs='+', help='A list of chromosomes to use for the test set')
 
+    parser.add_argument('-frac', type=float, help='Fraction of dataset', default=1.0)
+    
     args = parser.parse_args()
 
     if len(set.intersection(set(args.val_chroms), set(['chrM', 'chrUn']))) or len(set.intersection(set(args.test_chroms), set(['chrM', 'chrUn']))) :
@@ -249,7 +248,6 @@ def main():
         # Specifying the full path in the yaml configuration file.
         out_dir_path = (str(dir_path.stdout, 'utf-8')).rstrip() + '/' + args.outdir
 
-
     print('Creating output directory')
     subprocess.call(['mkdir', args.outdir])
     print(out_dir_path)
@@ -267,7 +265,7 @@ def main():
                                     to_keep=None,
                                     out_prefix=args.outdir + '/data_train',
                                     chromatin_track_list=args.chromtracks,
-                                    nbins=args.nbins, p=args.p)
+                                    nbins=args.nbins, p=args.p, frac=args.frac)
 
     print('-->Constructing validation data ...')
     TFRecords_val = construct_test_set(genome_sizes_file=args.info,
@@ -277,7 +275,7 @@ def main():
                         stride=args.len,
                         to_keep=args.val_chroms,
                         out_prefix=args.outdir + '/data_val',
-                        chromatin_track_list=args.chromtracks, nbins=args.nbins, p=args.p)
+                        chromatin_track_list=args.chromtracks, nbins=args.nbins, p=args.p, frac=args.frac)
 
     print('-->Constructing test data ...')
     TFRecords_test = construct_test_set(genome_sizes_file=args.info,
@@ -287,25 +285,29 @@ def main():
                         stride=args.len,
                         to_keep=args.test_chroms,
                         out_prefix=args.outdir + '/data_test',
-                        chromatin_track_list=args.chromtracks, nbins=args.nbins, p=args.p)
+                        chromatin_track_list=args.chromtracks, nbins=args.nbins, p=args.p, frac = args.frac)
     
     # Produce a default yaml file recording the output
     yml_training_schema = {'train_seq': {'seq': 'seq',
                                      'labels': 'labels',
                                      'chromatin_tracks': args.chromtracks,
-                                     'TFRecord': TFRecords_train_seq},
+                                     'TFRecord': TFRecords_train_seq,
+                                     'fa':args.fa},
                            'train_bichrom': {'seq': 'seq',
                                      'labels': 'labels',
                                      'chromatin_tracks': args.chromtracks,
-                                     'TFRecord': TFRecords_train_bichrom},
+                                     'TFRecord': TFRecords_train_bichrom,
+                                     'fa':args.fa},
                            'val':   {'seq': 'seq',
                                      'labels': 'labels',
                                      'chromatin_tracks': args.chromtracks,
-                                     'TFRecord': TFRecords_val},
+                                     'TFRecord': TFRecords_val,
+                                     'fa':args.fa},
                            'test':  {'seq': 'seq',
                                      'labels': 'labels',
                                      'chromatin_tracks': args.chromtracks,
-                                     'TFRecord': TFRecords_test}}
+                                     'TFRecord': TFRecords_test,
+                                     'fa':args.fa}}
 
     # Note: The x.split('/')[-1].split('.')[0] accounts for input chromatin bigwig files with
     # associated directory paths
