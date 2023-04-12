@@ -1,0 +1,25 @@
+test:
+  TFRecord: /storage/home/spg5958/group/lab/siddharth/bichrom/bichrom_pytorch/construct_data/training_data/data_test.bed
+  chromatin_tracks: &id001
+  - ''
+  fa: /storage/home/spg5958/group/genomes/mm10/mm10.fa
+  labels: labels
+  seq: seq
+train_bichrom:
+  TFRecord: /storage/home/spg5958/group/lab/siddharth/bichrom/bichrom_pytorch/construct_data/training_data/data_train_bichrom.bed
+  chromatin_tracks: *id001
+  fa: /storage/home/spg5958/group/genomes/mm10/mm10.fa
+  labels: labels
+  seq: seq
+train_seq:
+  TFRecord: /storage/home/spg5958/group/lab/siddharth/bichrom/bichrom_pytorch/construct_data/training_data/data_train_seq.bed
+  chromatin_tracks: *id001
+  fa: /storage/home/spg5958/group/genomes/mm10/mm10.fa
+  labels: labels
+  seq: seq
+val:
+  TFRecord: /storage/home/spg5958/group/lab/siddharth/bichrom/bichrom_pytorch/construct_data/training_data/data_val.bed
+  chromatin_tracks: *id001
+  fa: /storage/home/spg5958/group/genomes/mm10/mm10.fa
+  labels: labels
+  seq: seq

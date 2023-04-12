@@ -6,12 +6,12 @@
 #SBATCH --mem=80GB
 #SBATCH --partition=open
 #SBATCH --job-name=train_bichrom
-#SBATCH --output=slurm-%x-%j.out
+#SBATCH --output=slurm_roar_collab_epochs_30_r2.out
 umask 007
 
 SECONDS=0
 
-python ../run_bichrom.py -training_schema_yaml ../../../data/Ascl1_12hr_real/trainig_data/bichrom.yaml -len 500 -outdir train_out_roar_collab_epochs_15_r2 -nbins 10 -net bimodal -epochs 15
+python ../run_bichrom.py -training_schema_yaml ../../../data/Ascl1_12hr_real/trainig_data/bichrom.yaml -len 500 -outdir train_out_roar_collab_epochs_30_r2 -nbins 10 -net bimodal -epochs 30
 
 ELAPSED="Elapsed: $(($SECONDS / 3600))hrs $((($SECONDS / 60) % 60))min $(($SECONDS % 60))sec"
 echo $ELAPSED

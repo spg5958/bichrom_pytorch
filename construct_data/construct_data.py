@@ -133,7 +133,7 @@ def define_training_coordinates(chip_coords: pd.DataFrame, genome_sizes_file: st
     return training_coords_seq, training_coords_bichrom
 
 def construct_training_set(genome_sizes_file, genome_fasta_file, peaks_file, blacklist_file, to_keep, to_filter,
-                            window_length, acc_regions_file, out_prefix, chromatin_track_list, nbins, p=1, frac=1.0):
+                            window_length, acc_regions_file, out_prefix, nbins, p=1, frac=1.0):
 
     # prepare files for defining coordiantes
     curr_genome_bdt = utils.get_genome_sizes(genome_sizes_file, to_keep=to_keep, to_filter=to_filter)
@@ -167,7 +167,7 @@ def construct_training_set(genome_sizes_file, genome_fasta_file, peaks_file, bla
     return out_prefix + "_seq.bed", out_prefix + "_bichrom.bed"
 
 def construct_test_set(genome_sizes_file, genome_fasta_file, peaks_file, blacklist_file, to_keep,
-                        window_length, stride, out_prefix, chromatin_track_list, nbins, p=1, frac=1.0):
+                        window_length, stride, out_prefix, nbins, p=1, frac=1.0):
 
     # prepare file for defining coordinates
     blacklist_bdt = BedTool(blacklist_file)
@@ -206,7 +206,7 @@ def main():
     parser.add_argument('-acc_domains', help='Bed file with accessible domains',
                         required=True)
     parser.add_argument('-chromtracks', nargs='+', help='A list of BigWig files for all input chromatin '
-                        'experiments', required=True)
+                        'experiments', required=False)
     parser.add_argument('-peaks', help='A ChIP-seq or ChIP-exo peak file in multiGPS file format',
                         required=True)
     parser.add_argument('-o', '--outdir', help='Output directory for storing train, test data',
@@ -254,7 +254,8 @@ def main():
 
     print('Recording output paths')
 
-    print([x.split('/')[-1].split('.')[0] for x in args.chromtracks])
+    if args.chromtracks is not None:
+        print([x.split('/')[-1].split('.')[0] for x in args.chromtracks])
 
     print('-->Constructing train data ...')
     TFRecords_train_seq, TFRecords_train_bichrom = construct_training_set(genome_sizes_file=args.info, genome_fasta_file=args.fa,
@@ -264,7 +265,6 @@ def main():
                                     to_filter=args.val_chroms + args.test_chroms + ['chrM', 'chrUn'],
                                     to_keep=None,
                                     out_prefix=args.outdir + '/data_train',
-                                    chromatin_track_list=args.chromtracks,
                                     nbins=args.nbins, p=args.p, frac=args.frac)
 
     print('-->Constructing validation data ...')
@@ -275,7 +275,7 @@ def main():
                         stride=args.len,
                         to_keep=args.val_chroms,
                         out_prefix=args.outdir + '/data_val',
-                        chromatin_track_list=args.chromtracks, nbins=args.nbins, p=args.p, frac=args.frac)
+                        nbins=args.nbins, p=args.p, frac=args.frac)
 
     print('-->Constructing test data ...')
     TFRecords_test = construct_test_set(genome_sizes_file=args.info,
@@ -285,7 +285,7 @@ def main():
                         stride=args.len,
                         to_keep=args.test_chroms,
                         out_prefix=args.outdir + '/data_test',
-                        chromatin_track_list=args.chromtracks, nbins=args.nbins, p=args.p, frac = args.frac)
+                        nbins=args.nbins, p=args.p, frac = args.frac)
     
     # Produce a default yaml file recording the output
     yml_training_schema = {'train_seq': {'seq': 'seq',
