@@ -71,8 +71,6 @@ def save_metrics(hist_object, pr_history, records_path):
     np.savetxt(records_path + 'valPRC.txt', val_pr, fmt='%1.4f')
     return loss, val_pr
     
-    
-# NOTE: ADDING A RECORDS PATH HERE!
 def train(model, train_path, val_path, batch_size, records_path, epochs):
     
     # GPU
@@ -93,55 +91,40 @@ def train(model, train_path, val_path, batch_size, records_path, epochs):
     Returns:
         loss (ndarray): An array with the validation loss at each epoch
     """
-
+    
+    w0=model.model_dense_repeat[0].weight.clone().detach().numpy()
+    
     loss_fn = torch.nn.BCELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     
     train_dataset = TFdataset(train_path, batch_size, "seqonly")
     val_dataset = TFdataset(val_path, batch_size, "seqonly")
-    
-    ###########################
-    print("#"*20)
-    print(f"Total Parameters = {sum(p.numel() for p in model.parameters())}")
-    print(f"Total Trainable Parameters = {sum(p.numel() for p in model.parameters() if p.requires_grad)}")
-    print(model)
-    print("#"*20)
-    ###########################
-    
+
     def train_one_epoch(epoch_index):
         running_loss = 0.
         batch_avg_vloss = 0.
-            
-        # Here, we use enumerate(training_loader) instead of
-        # iter(training_loader) so that we can track the batch
-        # index and do some intra-epoch reporting
+
         for i, data in enumerate(train_dataset):
-            # Every data instance is an input + label pair
             seq,chrom,target,labels = data
             
             # transfer data to GPU
             seq, labels = seq.to(device), labels.to(device)
             
-            # Zero your gradients for every batch!
             optimizer.zero_grad()
 
-            # Make predictions for this batch
             outputs = model(seq)
             labels=labels.to(torch.float32)
-            # Compute the loss and its gradients
             loss = loss_fn(outputs, labels)
             loss.backward()
 
-            # Adjust learning weights
             optimizer.step()
 
-            # Gather data and report
             running_loss += loss.item()
             batch_avg_vloss = running_loss / (i + 1) # loss per batch
-            print('  batch {} loss: {}'.format(i + 1, batch_avg_vloss))
+            print('SEQ - EPOCH {}: batch {} loss: {}\r'.format(epoch_index+1, i + 1, batch_avg_vloss), end="\r")
 
         return batch_avg_vloss
-
+ 
     print(f"Epochs = {epochs}")
     EPOCHS = epochs
 
@@ -152,17 +135,20 @@ def train(model, train_path, val_path, batch_size, records_path, epochs):
     
     for epoch in range(EPOCHS):
         
-        print('EPOCH {}:'.format(epoch + 1))
+        print('\nEPOCH {}:'.format(epoch + 1))
 
-        # Make sure gradient tracking is on, and do a pass over the data
         model.train(True)
         avg_loss = train_one_epoch(epoch)
 
-        # We don't need gradients on to do reporting
+        wi=model.model_dense_repeat[0].weight.clone().detach().numpy()
+        dw=wi-w0
+        print()
+        print(np.linalg.norm(dw))
+
         model.train(False)
 
-        running_vloss = 0.0#torch.tensor(0.0)
-        avg_vloss=0.0#torch.tensor(0.0)
+        running_vloss = 0.0
+        avg_vloss=0.0
         val_predictions=[]
         val_labels=[]
         for i, vdata in enumerate(val_dataset):
@@ -178,11 +164,11 @@ def train(model, train_path, val_path, batch_size, records_path, epochs):
             running_vloss += float(vloss)
 
             avg_vloss = running_vloss / (i + 1)
-            print('LOSS train {} valid {}'.format(avg_loss, avg_vloss))
+            print('SEQ - EPOCH {}: LOSS train {} valid {}'.format(epoch + 1, avg_loss, avg_vloss),end="\r")
             val_predictions.append(voutputs.cpu().detach().numpy())
             val_labels.append(vlabels.cpu().detach().numpy())
             
-        torch.save(model.state_dict(), records_path+'model_epoch{}.hdf5'.format(epoch+1))    
+        torch.save(model.state_dict(), records_path+'model_epoch{}.torch'.format(epoch+1))    
         hist["loss"].append(avg_loss)
         hist["val_loss"].append(avg_vloss)
         predictions=np.concatenate(val_predictions)
@@ -214,4 +200,4 @@ if __name__ == '__main__':
     records_path="train_out/seqnet/"
     from train import Params
     model=build_model(params=Params(), seq_length=500)
-    torch.save(model.state_dict(), records_path+'model_epoch1.hdf5')
+    torch.save(model.state_dict(), records_path+'model_epoch1.torch')

@@ -113,22 +113,12 @@ def transfer(train_path, val_path, basemodel, model,
     # transfer model to GPU
     basemodel.to(device)
     model.to(device)
-    
+
     for param in basemodel.parameters():
         param.requires_grad = False
         
-    ###########################
-    print("#"*20)
-    print(f"Total Parameters = {sum(p.numel() for p in model.parameters())}")
-    print(f"Total Trainable Parameters = {sum(p.numel() for p in model.parameters() if p.requires_grad)}")
-    print(model)
-    for name, param in model.named_parameters():
-        print(name, param.requires_grad)
-        
-    w1=model.state_dict()['base_model.linear.weight']
-    w3=model.state_dict()['model.conv1d.weight']
-    print("#"*20)
-    ########################### 
+    #w0=basemodel.model_dense_repeat[6].weight.clone().detach().numpy()
+    w0=model.model.linear.weight.clone().detach().numpy()
     
     loss_fn = torch.nn.BCELoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9, nesterov=True)
@@ -139,51 +129,28 @@ def transfer(train_path, val_path, basemodel, model,
         running_loss = 0.
         batch_avg_vloss = 0.
 
-        # Here, we use enumerate(training_loader) instead of
-        # iter(training_loader) so that we can track the batch
-        # index and do some intra-epoch reporting
         for i, data in enumerate(train_dataset):
-            
-            
-            
-            # Every data instance is an input + label pair
+ 
             seq,chrom,target,labels = data
             
             # transfer data to GPU
             seq, chrom, labels = seq.to(device), chrom.to(device), labels.to(device)
-            
-            # Zero your gradients for every batch!
+
             optimizer.zero_grad()
 
-            # Make predictions for this batch
             outputs = model(seq,chrom)
             labels=labels.to(torch.float32) 
-            # Compute the loss and its gradients
             loss = loss_fn(outputs, labels)
             loss.backward()
 
-            # Adjust learning weights
             optimizer.step()
 
-            # Gather data and report
             running_loss += loss.item()
             batch_avg_vloss = running_loss / (i+1) # loss per batch
-            print('  batch {} loss: {}'.format(i + 1, batch_avg_vloss))
+            print('CHROM - EPOCH {}:  batch {} loss: {}'.format(epoch_index+1, i + 1, batch_avg_vloss), end="\r")
 
-         
-            ###########################
-            print("#"*20)
-            w2=model.state_dict()['base_model.linear.weight']
-            w4=model.state_dict()['model.conv1d.weight']
-            
-            print("Base Model Weight Norm = "+str(torch.linalg.norm(torch.sub(w1,w2))))
-            print("Model Weight Norm = "+str(torch.linalg.norm(torch.sub(w3,w4))))
-            print("#"*20)
-            ###########################
-            
         return batch_avg_vloss
     
-    # Initializing in a separate cell so we can easily add more epochs to the same run
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 
     print(f"Epochs = {epochs}")
@@ -195,13 +162,17 @@ def transfer(train_path, val_path, basemodel, model,
     precision_recall_history={"val_auprc":[]}
     
     for epoch in range(EPOCHS):
-        print('EPOCH {}:'.format(epoch + 1))
-
-        # Make sure gradient tracking is on, and do a pass over the data               
+        print('\nEPOCH {}:'.format(epoch + 1))
+           
         model.train(True)
         avg_loss = train_one_epoch(epoch)
+        
+        #wi=basemodel.model_dense_repeat[6].weight.clone().detach().numpy()
+        wi=model.model.linear.weight.clone().detach().numpy()
+        dw=wi-w0
+        print()
+        print(np.linalg.norm(dw))
 
-        # We don't need gradients on to do reporting
         model.train(False)
         
         running_vloss = 0.0
@@ -220,11 +191,11 @@ def transfer(train_path, val_path, basemodel, model,
             vloss = loss_fn(voutputs, vlabels)
             running_vloss += float(vloss)
             avg_vloss = running_vloss / (i + 1)
-            print('LOSS train {} valid {}'.format(avg_loss, avg_vloss))
+            print('CHROM - EPOCH {}: LOSS train {} valid {}'.format(epoch + 1, avg_loss, avg_vloss), end="\r")
             val_predictions.append(voutputs.cpu().detach().numpy())
             val_labels.append(vlabels.cpu().detach().numpy())
    
-        torch.save(model.state_dict(), records_path+'model_epoch{}.hdf5'.format(epoch+1))
+        torch.save(model.state_dict(), records_path+'model_epoch{}.torch'.format(epoch+1))
         hist["loss"].append(avg_loss)
         hist["val_loss"].append(avg_vloss)
         predictions=np.concatenate(val_predictions)

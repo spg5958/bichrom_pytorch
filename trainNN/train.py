@@ -29,7 +29,7 @@ def return_best_model(pr_vec, model_path):
     # return the model with the lowest validation LOSS
     model_idx = np.argmax(pr_vec)
     # define the model path (The model files are 1-based)
-    model_file = model_path + 'model_epoch' + str(model_idx + 1) + '.hdf5'
+    model_file = model_path + 'model_epoch' + str(model_idx + 1) + '.torch'
     # load and return the selected model:
     return model_file
 
@@ -113,7 +113,7 @@ def train_bichrom(data_paths, outdir, seq_len, bin_size, epochs, net="bimodal", 
         records_file_path = outdir + '/metrics'
 
         # save the best msc model
-        call(['cp', mseq_path, outdir + '/full_model.best.hdf5'])
+        call(['cp', mseq_path, outdir + '/full_model.best.torch'])
 
         params=Params()
         mseq = build_model(params, seq_len)
@@ -136,7 +136,7 @@ def train_bichrom(data_paths, outdir, seq_len, bin_size, epochs, net="bimodal", 
         records_file_path = outdir + '/metrics'
 
         # save the best msc model
-        call(['cp', msc_path, outdir + '/full_model.best.hdf5'])
+        call(['cp', msc_path, outdir + '/full_model.best.torch'])
 
         params=Params()
         no_of_chromatin_tracks = len(data_paths["test"]['chromatin_tracks'])
@@ -164,7 +164,7 @@ def train_bichrom(data_paths, outdir, seq_len, bin_size, epochs, net="bimodal", 
         records_file_path = outdir + '/metrics'
 
         # save the best msc model
-        call(['cp', msc_path, outdir + '/full_model.best.hdf5'])
+        call(['cp', msc_path, outdir + '/full_model.best.torch'])
 
         params=Params()
         mseq = build_model(params, seq_len)
