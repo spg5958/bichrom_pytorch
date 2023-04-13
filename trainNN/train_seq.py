@@ -92,7 +92,7 @@ def train(model, train_path, val_path, batch_size, records_path, epochs):
         loss (ndarray): An array with the validation loss at each epoch
     """
     
-    w0=model.model_dense_repeat[0].weight.clone().detach().numpy()
+    w0=model.model_dense_repeat[0].weight.clone().detach().cpu().numpy()
     
     loss_fn = torch.nn.BCELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
@@ -140,7 +140,7 @@ def train(model, train_path, val_path, batch_size, records_path, epochs):
         model.train(True)
         avg_loss = train_one_epoch(epoch)
 
-        wi=model.model_dense_repeat[0].weight.clone().detach().numpy()
+        wi=model.model_dense_repeat[0].weight.clone().detach().cpu().numpy()
         dw=wi-w0
         print()
         print(np.linalg.norm(dw))

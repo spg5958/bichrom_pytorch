@@ -117,8 +117,8 @@ def transfer(train_path, val_path, basemodel, model,
     for param in basemodel.parameters():
         param.requires_grad = False
         
-    #w0=basemodel.model_dense_repeat[6].weight.clone().detach().numpy()
-    w0=model.model.linear.weight.clone().detach().numpy()
+    #w0=basemodel.model_dense_repeat[6].weight.clone().detach().cpu().numpy()
+    w0=model.model.linear.weight.clone().detach().cpu().numpy()
     
     loss_fn = torch.nn.BCELoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9, nesterov=True)
@@ -167,8 +167,8 @@ def transfer(train_path, val_path, basemodel, model,
         model.train(True)
         avg_loss = train_one_epoch(epoch)
         
-        #wi=basemodel.model_dense_repeat[6].weight.clone().detach().numpy()
-        wi=model.model.linear.weight.clone().detach().numpy()
+        #wi=basemodel.model_dense_repeat[6].weight.clone().detach().cpu().numpy()
+        wi=model.model.linear.weight.clone().detach().cpu().numpy()
         dw=wi-w0
         print()
         print(np.linalg.norm(dw))
