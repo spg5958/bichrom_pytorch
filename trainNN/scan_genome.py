@@ -2,6 +2,7 @@ from __future__ import division
 import h5py
 import numpy as np
 import pandas as pd
+import sklearn.metrics
 from sklearn.metrics import roc_auc_score, precision_recall_curve, auc
 import matplotlib
 matplotlib.use('Agg')
@@ -83,8 +84,7 @@ def get_metrics(test_labels, test_probas, records_file, model_name):
     # Calculate auROC
     roc_auc = roc_auc_score(test_labels, test_probas)
     # Calculate auPRC
-    precision, recall, thresholds = precision_recall_curve(test_labels, test_probas)
-    prc_auc = auc(recall, precision)
+    prc_auc = sklearn.metrics.average_precision_score(test_labels, test_probas)
     records_file.write('')
     # Write auROC and auPRC to records file.
     records_file.write("Model:{0}\n".format(model_name))

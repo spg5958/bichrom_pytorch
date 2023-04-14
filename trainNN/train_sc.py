@@ -122,6 +122,14 @@ def transfer(train_path, val_path, basemodel, model,
     
     loss_fn = torch.nn.BCELoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9, nesterov=True)
+    
+    def decayed_learning_rate(step):
+        initial_learning_rate = 0.01
+        decay_rate = 1e-6
+        return initial_learning_rate / (1 + decay_rate * step / decay_step)
+    my_lr_scheduler = torch.optim.lr_scheduler.LambdaLR.LambdaLR(optimizer, lr_lambda=decayed_learning_rate)
+
+
     train_dataset = TFdataset(train_path, batchsize, "all", bin_size)
     val_dataset = TFdataset(val_path, batchsize, "all", bin_size)
             
@@ -144,6 +152,7 @@ def transfer(train_path, val_path, basemodel, model,
             loss.backward()
 
             optimizer.step()
+            my_lr_scheduler.step()
 
             running_loss += loss.item()
             batch_avg_vloss = running_loss / (i+1) # loss per batch
