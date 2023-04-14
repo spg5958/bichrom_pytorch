@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --account=open
+#SBATCH --account=sam77_h
 #SBATCH --time=30:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=8

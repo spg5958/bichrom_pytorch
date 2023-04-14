@@ -126,8 +126,9 @@ def transfer(train_path, val_path, basemodel, model,
     def decayed_learning_rate(step):
         initial_learning_rate = 0.01
         decay_rate = 1e-6
+        decay_step = 1.0
         return initial_learning_rate / (1 + decay_rate * step / decay_step)
-    my_lr_scheduler = torch.optim.lr_scheduler.LambdaLR.LambdaLR(optimizer, lr_lambda=decayed_learning_rate)
+    my_lr_scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=decayed_learning_rate)
 
 
     train_dataset = TFdataset(train_path, batchsize, "all", bin_size)
