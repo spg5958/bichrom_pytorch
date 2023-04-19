@@ -20,11 +20,11 @@ def transforms(x,bin_size):
     return x.reshape((x.shape[0],bin_size,-1)).mean(axis=1).flatten()
 
 
-def TFdataset(path, batchsize, dataflag, bin_size):
+def TFdataset(path, batchsize, dataflag, bin_size, seed):
     
     transform_frozen = partial(transforms, bin_size = bin_size)
     
-    TFdataset_batched = iterutils.train_TFRecord_dataset(path, batchsize, dataflag, shuffle=False, drop_remainder=False, transforms={"chrom": transform_frozen})
+    TFdataset_batched = iterutils.train_TFRecord_dataset(path, batchsize, dataflag, shuffle=False, drop_remainder=False, transforms={"chrom": transform_frozen}, seed=seed)
 
     return TFdataset_batched
 
@@ -92,7 +92,7 @@ def get_metrics(test_labels, test_probas, records_file, model_name):
     records_file.write("AUC PRC:{0}\n".format(prc_auc))
 
 
-def get_probabilities(path, model, outfile, mode, bin_size):
+def get_probabilities(path, model, outfile, mode, bin_size, seed):
     """
     Get network-assigned probabilities
     Parameters:
@@ -103,7 +103,7 @@ def get_probabilities(path, model, outfile, mode, bin_size):
          true labels (ndarray): True test-set labels
     """
     # Inputing a range of default values here, can be changed later.
-    dataset = TFdataset(path=path, batchsize=1000, dataflag=mode, bin_size=bin_size)
+    dataset = TFdataset(path=path, batchsize=1000, dataflag=mode, bin_size=bin_size, seed=seed)
     # Load the keras model
     # model = load_model(model_file)
     true_labels, probas = test_on_batch(dataset, model, outfile, mode)
@@ -128,7 +128,7 @@ def combine_pr_curves(records_file, m_seq_probas, m_sc_probas, labels):
 
     
 def evaluate_models(path, probas_out_seq, probas_out_sc,
-                    model_seq, model_sc, records_file_path, bin_size, net):
+                    model_seq, model_sc, records_file_path, bin_size, net, seed):
     
     print(f"Selected network (scan_genome.py) = {net}")
     
@@ -142,7 +142,10 @@ def evaluate_models(path, probas_out_seq, probas_out_sc,
         true_labels, probas_seq = get_probabilities(path=path,
                                                     model=model_seq,
                                                     outfile=probas_out_seq,
-                                                    mode='seqonly',bin_size=bin_size)
+                                                    mode='seqonly',
+                                                    bin_size=bin_size,
+                                                    seed=seed
+                                                   )
 
 
         # Get the auROC and the auPRC for both M-SEQ and M-SC models:
@@ -158,7 +161,7 @@ def evaluate_models(path, probas_out_seq, probas_out_sc,
 
         true_labels, probas_sc = get_probabilities(path=path, 
                                          model=model_sc, outfile=probas_out_sc,
-                                         mode='all',bin_size=bin_size)
+                                         mode='all',bin_size=bin_size,seed=seed)
 
         # Get the auROC and the auPRC for both M-SEQ and M-SC models:
         get_metrics(true_labels, probas_sc, records_files, 'MSC')
@@ -173,11 +176,14 @@ def evaluate_models(path, probas_out_seq, probas_out_sc,
         true_labels, probas_seq = get_probabilities(path=path,
                                                     model=model_seq,
                                                     outfile=probas_out_seq,
-                                                    mode='seqonly',bin_size=bin_size)
+                                                    mode='seqonly',
+                                                    bin_size=bin_size,
+                                                    seed=seed
+                                                   )
 
         _, probas_sc = get_probabilities(path=path, 
                                          model=model_sc, outfile=probas_out_sc,
-                                         mode='all',bin_size=bin_size)
+                                         mode='all',bin_size=bin_size,seed=seed)
 
         # Get the auROC and the auPRC for both M-SEQ and M-SC models:
         get_metrics(true_labels, probas_seq, records_files, 'MSEQ')

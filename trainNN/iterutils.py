@@ -10,6 +10,9 @@ from seqchromloader import SeqChromDatasetByBed
 
 import torch
 
+import random
+
+
 class Sequence:
     dic = {
         "A": 0,
@@ -122,12 +125,15 @@ def train_generator_h5(h5file, dspath, batchsize, seqlen, dtype, iterflag):
             else:
                 yield ds[start_index:end_index]
 
-def train_TFRecord_dataset(dspath, batchsize, dataflag, shuffle=True, drop_remainder=True, transforms=None):
+                
+def train_TFRecord_dataset(dspath, batchsize, dataflag, shuffle=True, drop_remainder=True, transforms=None, seed=None):
+    
+    print(f"Seed = {seed}")
     
     loader=None
+    g=setRandomSeed(seed)
     
-    #genome="/storage/home/spg5958/group/genomes/mm10/mm10.fa"
-    dataloader_kws={"num_workers":8,"batch_size":batchsize}    
+    dataloader_kws={"num_workers":8, "batch_size":batchsize, "generator":g}
     loader=SeqChromDatasetByBed(dspath["TFRecord"],dspath['fa'],dspath["chromatin_tracks"],transforms=transforms,dataloader_kws=dataloader_kws)
 
     return loader
@@ -143,3 +149,12 @@ def getDevice():
         device = "cpu"
     print(f"DEVICE = {device}")
     return device
+
+def setRandomSeed(seed):
+    random.seed(seed)
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    g = torch.Generator()
+    g.manual_seed(seed)
+    return g
+    

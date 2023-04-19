@@ -14,9 +14,9 @@ import torch.nn.functional as F
 from datetime import datetime
 
 
-def TFdataset(path, batchsize, dataflag):
-
-    TFdataset_batched = iterutils.train_TFRecord_dataset(path, batchsize, dataflag)
+def TFdataset(path, batchsize, dataflag, seed):
+    
+    TFdataset_batched = iterutils.train_TFRecord_dataset(path, batchsize, dataflag, seed=seed)
 
     return TFdataset_batched
 
@@ -32,7 +32,7 @@ class bichrom_seq(nn.Module):
         self.lstm=nn.LSTM(params.n_filters, 32, batch_first=True)
         self.tanh=nn.Tanh()
         self.model_dense_repeat = nn.Sequential()
-        self.model_dense_repeat.append(nn.Linear(params.lstm_out, params.dense_layer_size))
+        self.model_dense_repeat.append(nn.Linear(32, params.dense_layer_size))
         self.model_dense_repeat.append(nn.ReLU())
         self.model_dense_repeat.append(nn.Dropout(params.dropout))
         for idx in range(params.dense_layers-1):
@@ -41,7 +41,31 @@ class bichrom_seq(nn.Module):
             self.model_dense_repeat.append(nn.Dropout(params.dropout))        
         self.linear=nn.Linear(params.dense_layer_size, 1)
         self.sigmoid=nn.Sigmoid()
-                          
+                   
+        # initialization
+        torch.nn.init.xavier_uniform_(self.conv1d.weight)
+        torch.nn.init.constant_(self.conv1d.bias,0)
+        for name, param in self.lstm.named_parameters():
+            if 'weight_ih' in name:
+                nn.init.xavier_uniform_(param)
+            if 'weigth_hh' in name:
+                nn.init.orthogonal_(param)
+            elif 'bias' in name:
+                nn.init.constant_(param,0)
+        for names in self.lstm._all_weights:
+            for name in filter(lambda n: "bias_ih" in n,  names):
+                bias = getattr(self.lstm, name)
+                n = bias.size(0)
+                start, end = n//4, n//2
+                bias.data[start:end].fill_(1.)
+        for layer in self.model_dense_repeat:
+            if isinstance(layer, nn.Linear):
+                torch.nn.init.xavier_uniform_(layer.weight)
+                torch.nn.init.constant_(layer.bias,0)
+        torch.nn.init.xavier_uniform_(self.linear.weight)
+        torch.nn.init.constant_(self.linear.bias,0)
+        
+        
     def forward(self,x):
         xs=self.conv1d(x)
         xs=self.relu(xs)
@@ -71,8 +95,9 @@ def save_metrics(hist_object, pr_history, records_path):
     np.savetxt(records_path + 'valPRC.txt', val_pr, fmt='%1.4f')
     return loss, val_pr
     
-def train(model, train_path, val_path, batch_size, records_path, epochs):
     
+def train(model, train_path, val_path, batch_size, records_path, epochs, seed):
+   
     # GPU
     device = iterutils.getDevice()
     
@@ -97,9 +122,9 @@ def train(model, train_path, val_path, batch_size, records_path, epochs):
     loss_fn = torch.nn.BCELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     
-    train_dataset = TFdataset(train_path, batch_size, "seqonly")
-    val_dataset = TFdataset(val_path, batch_size, "seqonly")
-
+    train_dataset = TFdataset(train_path, batch_size, "seqonly", seed)
+    val_dataset = TFdataset(val_path, batch_size, "seqonly", seed)
+    
     def train_one_epoch(epoch_index):
         running_loss = 0.
         batch_avg_vloss = 0.
@@ -187,12 +212,14 @@ def train(model, train_path, val_path, batch_size, records_path, epochs):
 
 
 def build_and_train_net(hyperparams, train_path, val_path, batch_size,
-                        records_path, seq_len, epochs):
+                        records_path, seq_len, epochs, seed):
+
+    iterutils.setRandomSeed(seed)
 
     model = build_model(params=hyperparams, seq_length=seq_len)
 
     loss, val_pr = train(model, train_path=train_path, val_path=val_path,
-                        batch_size=batch_size, records_path=records_path, epochs=epochs)
+                        batch_size=batch_size, records_path=records_path, epochs=epochs, seed=seed)
 
     return loss, val_pr
 

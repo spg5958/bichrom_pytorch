@@ -18,11 +18,11 @@ def transforms(x,bin_size):
     return x.reshape((x.shape[0],bin_size,-1)).mean(axis=1).flatten()
     
     
-def TFdataset(path, batchsize, dataflag, bin_size):
+def TFdataset(path, batchsize, dataflag, bin_size, seed):
         
     transform_frozen = partial(transforms, bin_size = bin_size)
     
-    TFdataset_batched = iterutils.train_TFRecord_dataset(path, batchsize, dataflag, transforms={"chrom": transform_frozen})
+    TFdataset_batched = iterutils.train_TFRecord_dataset(path, batchsize, dataflag, transforms={"chrom": transform_frozen}, seed=seed)
     
     return TFdataset_batched
 
@@ -43,6 +43,26 @@ class bichrom_chrom(nn.Module):
         self.relu2=nn.ReLU()
         self.linear=nn.Linear(5, 1)
         self.tanh=nn.Tanh()
+        
+        
+        # initialization
+        torch.nn.init.xavier_uniform_(self.conv1d.weight)
+        torch.nn.init.constant_(self.conv1d.bias,0)
+        for name, param in self.lstm.named_parameters():
+            if 'weight_ih' in name:
+                nn.init.xavier_uniform_(param)
+            if 'weigth_hh' in name:
+                nn.init.orthogonal_(param)
+            elif 'bias' in name:
+                nn.init.constant_(param,0)
+        for names in self.lstm._all_weights:
+            for name in filter(lambda n: "bias_ih" in n,  names):
+                bias = getattr(self.lstm, name)
+                n = bias.size(0)
+                start, end = n//4, n//2
+                bias.data[start:end].fill_(1.)
+        torch.nn.init.xavier_uniform_(self.linear.weight)
+        torch.nn.init.constant_(self.linear.bias,0)
         
     def forward(self,x):
         xc=self._reshape(x, (self.no_of_chromatin_tracks, int(self.seq_len/self.bin_size)))
@@ -70,8 +90,15 @@ class bimodal_network(nn.Module):
         self.linear=nn.Linear(self.params.dense_layer_size, 1)
         self.tanh=nn.Tanh()
         self.model=bichrom_chrom(no_of_chromatin_tracks,seq_len,bin_size)
-        self.linear2=nn.Linear(2, 1)
+        self.linear1=nn.Linear(2, 1)
         self.sigmoid=nn.Sigmoid()
+        
+        # initialization
+        torch.nn.init.xavier_uniform_(self.linear.weight)
+        torch.nn.init.constant_(self.linear.bias,0)
+        torch.nn.init.xavier_uniform_(self.linear1.weight)
+        torch.nn.init.constant_(self.linear1.bias,0)
+        
         
     def forward(self,seq_input,chromatin_input):
         self.base_model(seq_input)
@@ -80,7 +107,7 @@ class bimodal_network(nn.Module):
         xs=self.tanh(xs)
         xc=self.model(chromatin_input)
         xsc=torch.cat((xs, xc), dim=1)
-        xsc=self.linear2(xsc)
+        xsc=self.linear1(xsc)
         result=self.sigmoid(xsc)
         return result
 
@@ -105,7 +132,7 @@ def save_metrics(hist_object, pr_history, records_path):
 
 
 def transfer(train_path, val_path, basemodel, model,
-             batchsize, records_path, bin_size, epochs):
+             batchsize, records_path, bin_size, epochs, seed):
     
     # GPU
     device = iterutils.getDevice()
@@ -131,8 +158,8 @@ def transfer(train_path, val_path, basemodel, model,
     my_lr_scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=decayed_learning_rate)
 
 
-    train_dataset = TFdataset(train_path, batchsize, "all", bin_size)
-    val_dataset = TFdataset(val_path, batchsize, "all", bin_size)
+    train_dataset = TFdataset(train_path, batchsize, "all", bin_size, seed)
+    val_dataset = TFdataset(val_path, batchsize, "all", bin_size, seed)
             
     def train_one_epoch(epoch_index):
         running_loss = 0.
@@ -221,11 +248,11 @@ def transfer(train_path, val_path, basemodel, model,
 
 
 def transfer_and_train_msc(train_path, val_path, base_model_path,
-                           batch_size, records_path, bin_size, seq_len, params, epochs):
+                           batch_size, records_path, bin_size, seq_len, params, epochs, seed):
 
     # Calculate number of chromatin tracks
     no_of_chrom_tracks = len(train_path['chromatin_tracks'])
     model, basemodel = add_new_layers(base_model_path, seq_len, no_of_chrom_tracks, bin_size, params)
     loss, val_pr = transfer(train_path, val_path, basemodel, model,
-                    batch_size, records_path, bin_size, epochs=epochs)
+                    batch_size, records_path, bin_size, epochs=epochs, seed=seed)
     return loss, val_pr

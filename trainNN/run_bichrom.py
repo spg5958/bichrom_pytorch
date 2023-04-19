@@ -14,6 +14,7 @@ if __name__ == '__main__':
     parser.add_argument('-nbins', type=int, required=True, help='Number of bins')
     parser.add_argument('-net', default=['bimodal'], help='select network to train') # 'seq' 'chrom' 'bimodal'
     parser.add_argument('-epochs', type=int, default=2, help='Number of epochs')
+    parser.add_argument('-seed', type=int, default=1000, help='Random Seed')
     args = parser.parse_args()
 
     # load the yaml file with input data paths:
@@ -27,4 +28,4 @@ if __name__ == '__main__':
     call(['mkdir', outdir])
     
     train_bichrom(data_paths=data_paths, outdir=outdir, 
-                  seq_len=args.len, bin_size=int(args.len/args.nbins), net=args.net, epochs=args.epochs)
+                  seq_len=args.len, bin_size=int(args.len/args.nbins), net=args.net, epochs=args.epochs, seed=args.seed)

@@ -22,7 +22,7 @@ class Params:
         self.pooling_stride = 15
         self.dropout = 0.5
         self.dense_layer_size = 512
-        self.lstm_out = 32 
+        #self.lstm_out = 32 
 
         
 def return_best_model(pr_vec, model_path):
@@ -32,7 +32,7 @@ def return_best_model(pr_vec, model_path):
     return model_file
 
 
-def run_seq_network(train_path, val_path, records_path, seq_len, epochs):
+def run_seq_network(train_path, val_path, records_path, seq_len, epochs, seed):
     """
     Train M-SEQ. (Model Definition in README)
     Parameters:
@@ -53,14 +53,14 @@ def run_seq_network(train_path, val_path, records_path, seq_len, epochs):
     loss, seq_val_pr = build_and_train_net(curr_params, train_path, val_path,
                                            batch_size=curr_params.batchsize,
                                            records_path=records_path_seq,
-                                           seq_len=seq_len, epochs=epochs)
+                                           seq_len=seq_len, epochs=epochs, seed=seed)
     # choose the model with the lowest validation loss
     model_seq_path = return_best_model(pr_vec=seq_val_pr, model_path=records_path_seq)
     return model_seq_path
 
 
 def run_bimodal_network(train_path, val_path, records_path, base_seq_model_path,
-                        bin_size, seq_len, epochs):
+                        bin_size, seq_len, epochs, seed):
     """
     Train M-SC. (Model Definition in README)
     Parameters:
@@ -87,7 +87,7 @@ def run_bimodal_network(train_path, val_path, records_path, base_seq_model_path,
                                                   records_path=records_path_sc,
                                                   bin_size=bin_size,
                                                   seq_len=seq_len,
-                                                  params=curr_params, epochs=epochs)
+                                                  params=curr_params, epochs=epochs, seed=seed)
 
     # choose the model with the lowest validation loss
     # loss, bimodal_val_pr = np.loadtxt(records_path_sc + 'trainingLoss.txt')
@@ -96,7 +96,7 @@ def run_bimodal_network(train_path, val_path, records_path, base_seq_model_path,
     return model_sc
 
 
-def train_bichrom(data_paths, outdir, seq_len, bin_size, epochs, net="bimodal", ):
+def train_bichrom(data_paths, outdir, seq_len, bin_size, epochs, net="bimodal", seed=1000):
     
     print(f"Selected network (train.py) = {net}")
     
@@ -104,7 +104,7 @@ def train_bichrom(data_paths, outdir, seq_len, bin_size, epochs, net="bimodal", 
         print("seq selected")
         # Train the sequence-only network (M-SEQ)
         print("Training seq")
-        mseq_path = run_seq_network(train_path=data_paths['train_seq'], val_path=data_paths['val'], records_path=outdir, seq_len=seq_len, epochs=epochs)
+        mseq_path = run_seq_network(train_path=data_paths['train_seq'], val_path=data_paths['val'], records_path=outdir, seq_len=seq_len, epochs=epochs, seed=seed)
 
         # Evaluate both models on held-out test sets and plot metrics
         probas_out_seq = outdir + '/seqnet/' + 'test_probs.txt'
@@ -120,14 +120,14 @@ def train_bichrom(data_paths, outdir, seq_len, bin_size, epochs, net="bimodal", 
         evaluate_models(path=data_paths['test'],
                         probas_out_seq=probas_out_seq, probas_out_sc=None,
                         model_seq=mseq, model_sc=None,
-                        records_file_path=records_file_path, bin_size=bin_size, net=net)
+                        records_file_path=records_file_path, bin_size=bin_size, net=net, seed=seed)
         
     elif net == "chrom":
         print("chrom selected")
         # Train the bimodal network (M-SC)
         print("Training bichrom")
         mseq_path = outdir + '/seqnet/' + "model_epoch15.hdf5"
-        msc_path = run_bimodal_network(train_path=data_paths['train_bichrom'], val_path=data_paths['val'], records_path=outdir, base_seq_model_path=mseq_path, bin_size=bin_size, seq_len=seq_len, epochs=epochs)
+        msc_path = run_bimodal_network(train_path=data_paths['train_bichrom'], val_path=data_paths['val'], records_path=outdir, base_seq_model_path=mseq_path, bin_size=bin_size, seq_len=seq_len, epochs=epochs, seed=seed)
 
         # Evaluate both models on held-out test sets and plot metrics
         probas_out_sc = outdir + '/bichrom/' + 'test_probs.txt'
@@ -144,17 +144,17 @@ def train_bichrom(data_paths, outdir, seq_len, bin_size, epochs, net="bimodal", 
         evaluate_models(path=data_paths['test'],
                         probas_out_seq=probas_out_seq, probas_out_sc=probas_out_sc,
                         model_seq=mseq, model_sc=msc,
-                        records_file_path=records_file_path, bin_size=bin_size, net=net)
+                        records_file_path=records_file_path, bin_size=bin_size, net=net, seed=seed)
 
     else:
         print("bimodal selected")
         # Train the sequence-only network (M-SEQ)
         print("Training seq")
-        mseq_path = run_seq_network(train_path=data_paths['train_seq'], val_path=data_paths['val'], records_path=outdir, seq_len=seq_len, epochs=epochs)
+        mseq_path = run_seq_network(train_path=data_paths['train_seq'], val_path=data_paths['val'], records_path=outdir, seq_len=seq_len, epochs=epochs, seed=seed)
 
         # Train the bimodal network (M-SC)
         print("Training bichrom")
-        msc_path = run_bimodal_network(train_path=data_paths['train_bichrom'], val_path=data_paths['val'], records_path=outdir, base_seq_model_path=mseq_path, bin_size=bin_size, seq_len=seq_len, epochs=epochs)
+        msc_path = run_bimodal_network(train_path=data_paths['train_bichrom'], val_path=data_paths['val'], records_path=outdir, base_seq_model_path=mseq_path, bin_size=bin_size, seq_len=seq_len, epochs=epochs, seed=seed)
 
         # Evaluate both models on held-out test sets and plot metrics
         probas_out_seq = outdir + '/seqnet/' + 'test_probs.txt'
@@ -174,4 +174,4 @@ def train_bichrom(data_paths, outdir, seq_len, bin_size, epochs, net="bimodal", 
         evaluate_models(path=data_paths['test'],
                         probas_out_seq=probas_out_seq, probas_out_sc=probas_out_sc,
                         model_seq=mseq, model_sc=msc,
-                        records_file_path=records_file_path, bin_size=bin_size, net=net)
+                        records_file_path=records_file_path, bin_size=bin_size, net=net, seed=seed)
