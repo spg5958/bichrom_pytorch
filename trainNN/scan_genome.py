@@ -41,7 +41,7 @@ def test_on_batch(TFdataset, model, outfile, mode):
         outfile (str): The outfile used for storing probabilities.
     Returns: None (Saves an output file with the probabilities for the test set )
     """
-    print(model)
+    #print(model)
     model.train(False)
     probas_list=[]
     true_labels_list=[]
@@ -104,8 +104,6 @@ def get_probabilities(path, model, outfile, mode, bin_size, seed):
     """
     # Inputing a range of default values here, can be changed later.
     dataset = TFdataset(path=path, batchsize=1000, dataflag=mode, bin_size=bin_size, seed=seed)
-    # Load the keras model
-    # model = load_model(model_file)
     true_labels, probas = test_on_batch(dataset, model, outfile, mode)
 
     return true_labels, probas

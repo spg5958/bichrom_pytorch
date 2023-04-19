@@ -1,7 +1,7 @@
 import h5py
 import numpy as np
 
-from sklearn.metrics import precision_recall_curve, auc
+from sklearn.metrics import average_precision_score
 
 import os
 
@@ -64,8 +64,7 @@ class bichrom_seq(nn.Module):
                 torch.nn.init.constant_(layer.bias,0)
         torch.nn.init.xavier_uniform_(self.linear.weight)
         torch.nn.init.constant_(self.linear.bias,0)
-        
-        
+             
     def forward(self,x):
         xs=self.conv1d(x)
         xs=self.relu(xs)
@@ -117,10 +116,11 @@ def train(model, train_path, val_path, batch_size, records_path, epochs, seed):
         loss (ndarray): An array with the validation loss at each epoch
     """
     
-    w0=model.model_dense_repeat[0].weight.clone().detach().cpu().numpy()
-    
     loss_fn = torch.nn.BCELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    
+    model.train(False)
+    w0=model.model_dense_repeat[0].weight.clone().detach().cpu().numpy()
     
     train_dataset = TFdataset(train_path, batch_size, "seqonly", seed)
     val_dataset = TFdataset(val_path, batch_size, "seqonly", seed)
@@ -165,13 +165,13 @@ def train(model, train_path, val_path, batch_size, records_path, epochs, seed):
         model.train(True)
         avg_loss = train_one_epoch(epoch)
 
+        model.train(False)
+
         wi=model.model_dense_repeat[0].weight.clone().detach().cpu().numpy()
         dw=wi-w0
         print()
         print(np.linalg.norm(dw))
-
-        model.train(False)
-
+        
         running_vloss = 0.0
         avg_vloss=0.0
         val_predictions=[]
@@ -199,8 +199,7 @@ def train(model, train_path, val_path, batch_size, records_path, epochs, seed):
         predictions=np.concatenate(val_predictions)
         labels=np.concatenate(val_labels)
         
-        precision, recall, thresholds = precision_recall_curve(labels, predictions)
-        aupr = auc(recall, precision)
+        aupr = average_precision_score(labels, predictions)
 
         precision_recall_history["val_auprc"].append(aupr)
         

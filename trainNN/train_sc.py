@@ -2,7 +2,7 @@ import h5py
 import numpy as np
 import pandas as pd
 
-from sklearn.metrics import precision_recall_curve, auc
+from sklearn.metrics import average_precision_score
 
 import iterutils
 
@@ -43,7 +43,6 @@ class bichrom_chrom(nn.Module):
         self.relu2=nn.ReLU()
         self.linear=nn.Linear(5, 1)
         self.tanh=nn.Tanh()
-        
         
         # initialization
         torch.nn.init.xavier_uniform_(self.conv1d.weight)
@@ -144,11 +143,14 @@ def transfer(train_path, val_path, basemodel, model,
     for param in basemodel.parameters():
         param.requires_grad = False
         
-    #w0=basemodel.model_dense_repeat[6].weight.clone().detach().cpu().numpy()
-    w0=model.model.linear.weight.clone().detach().cpu().numpy()
+   
     
     loss_fn = torch.nn.BCELoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9, nesterov=True)
+    
+    model.train(False)
+    #w0=basemodel.model_dense_repeat[6].weight.clone().detach().cpu().numpy()
+    w0=model.model.linear.weight.clone().detach().cpu().numpy()
     
     def decayed_learning_rate(step):
         initial_learning_rate = 0.01
@@ -180,12 +182,12 @@ def transfer(train_path, val_path, basemodel, model,
             loss.backward()
 
             optimizer.step()
-            my_lr_scheduler.step()
+            
 
             running_loss += loss.item()
             batch_avg_vloss = running_loss / (i+1) # loss per batch
             print('CHROM - EPOCH {}:  batch {} loss: {}'.format(epoch_index+1, i + 1, batch_avg_vloss), end="\r")
-
+        my_lr_scheduler.step()
         return batch_avg_vloss
     
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -203,14 +205,14 @@ def transfer(train_path, val_path, basemodel, model,
            
         model.train(True)
         avg_loss = train_one_epoch(epoch)
+
+        model.train(False)
         
         #wi=basemodel.model_dense_repeat[6].weight.clone().detach().cpu().numpy()
         wi=model.model.linear.weight.clone().detach().cpu().numpy()
         dw=wi-w0
         print()
         print(np.linalg.norm(dw))
-
-        model.train(False)
         
         running_vloss = 0.0
         avg_vloss=0.0
@@ -237,8 +239,7 @@ def transfer(train_path, val_path, basemodel, model,
         hist["val_loss"].append(avg_vloss)
         predictions=np.concatenate(val_predictions)
         labels=np.concatenate(val_labels)
-        precision, recall, thresholds = precision_recall_curve(labels, predictions)
-        aupr = auc(recall, precision)
+        aupr = average_precision_score(labels, predictions)
         precision_recall_history["val_auprc"].append(aupr)
         epoch += 1
     
