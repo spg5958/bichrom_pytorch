@@ -46,25 +46,6 @@ class bichrom_chrom(nn.Module):
         self.linear=nn.Linear(5, 1)
         self.tanh=nn.Tanh()
         
-        # initialization
-        torch.nn.init.xavier_uniform_(self.conv1d.weight)
-        torch.nn.init.constant_(self.conv1d.bias,0)
-        for name, param in self.lstm.named_parameters():
-            if 'weight_ih' in name:
-                nn.init.xavier_uniform_(param)
-            if 'weigth_hh' in name:
-                nn.init.orthogonal_(param)
-            elif 'bias' in name:
-                nn.init.constant_(param,0)
-        for names in self.lstm._all_weights:
-            for name in filter(lambda n: "bias_ih" in n,  names):
-                bias = getattr(self.lstm, name)
-                n = bias.size(0)
-                start, end = n//4, n//2
-                bias.data[start:end].fill_(1.)
-        torch.nn.init.xavier_uniform_(self.linear.weight)
-        torch.nn.init.constant_(self.linear.bias,0)
-        
     def forward(self,x):
         xc=self._reshape(x, (self.no_of_chromatin_tracks, int(self.seq_len/self.bin_size)))
         xc=self.conv1d(xc)
@@ -93,12 +74,6 @@ class bimodal_network(nn.Module):
         self.model=bichrom_chrom(no_of_chromatin_tracks,seq_len,bin_size)
         self.linear1=nn.Linear(2, 1)
         self.sigmoid=nn.Sigmoid()
-        
-        # initialization
-        torch.nn.init.xavier_uniform_(self.linear.weight)
-        torch.nn.init.constant_(self.linear.bias,0)
-        torch.nn.init.xavier_uniform_(self.linear1.weight)
-        torch.nn.init.constant_(self.linear1.bias,0)
                
     def forward(self,seq_input,chromatin_input):
         self.base_model(seq_input)
