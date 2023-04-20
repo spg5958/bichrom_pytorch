@@ -96,38 +96,10 @@ def save_metrics(hist_object, pr_history, records_path):
     
     
 def train(model, train_path, val_path, batch_size, records_path, epochs, seed):
-   
-    # GPU
-    device = iterutils.getDevice()
-    
-    # transfer model to GPU
-    model.to(device)
-    
-    """
-    Train the Keras graph model
-    Parameters:
-        model (keras Model): The Model defined in build_model
-        train_path (str): Path to training data
-        val_path (str): Path to validation data
-        steps_per_epoch (int): Len(training_data)/batch_size
-        batch_size (int): Size of mini-batches used during training
-        records_path (str): Path + prefix to output directory
-    Returns:
-        loss (ndarray): An array with the validation loss at each epoch
-    """
-    
-    loss_fn = torch.nn.BCELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-    
-    model.train(False)
-    w0=model.model_dense_repeat[0].weight.clone().detach().cpu().numpy()
-    
-    train_dataset = TFdataset(train_path, batch_size, "seqonly", seed)
-    val_dataset = TFdataset(val_path, batch_size, "seqonly", seed)
     
     def train_one_epoch(epoch_index):
         running_loss = 0.
-        batch_avg_vloss = 0.
+        batch_avg_loss = 0.
 
         for i, data in enumerate(train_dataset):
             seq,chrom,target,labels = data
@@ -145,32 +117,34 @@ def train(model, train_path, val_path, batch_size, records_path, epochs, seed):
             optimizer.step()
 
             running_loss += loss.item()
-            batch_avg_vloss = running_loss / (i + 1) # loss per batch
-            print('SEQ - EPOCH {}: batch {} loss: {}\r'.format(epoch_index+1, i + 1, batch_avg_vloss), end="\r")
+            batch_avg_loss = running_loss / (i + 1) # loss per batch
+            print('SEQ - EPOCH {}: batch {} loss: {}\r'.format(epoch_index+1, i + 1, batch_avg_loss), end="")
+        print()
+        return batch_avg_loss
+   
+    # GPU
+    device = iterutils.getDevice()
+    model.to(device)
 
-        return batch_avg_vloss
- 
+    loss_fn = torch.nn.BCELoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    
+    train_dataset = TFdataset(train_path, batch_size, "seqonly", seed)
+    val_dataset = TFdataset(val_path, batch_size, "seqonly", seed)
+    
     print(f"Epochs = {epochs}")
     EPOCHS = epochs
-
-    best_vloss = 1_000_000.
 
     hist={"loss":[],"val_loss":[]}
     precision_recall_history={"val_auprc":[]}
     
     for epoch in range(EPOCHS):
         
-        print('\nEPOCH {}:'.format(epoch + 1))
+        print('EPOCH {}:'.format(epoch + 1))
 
         model.train(True)
         avg_loss = train_one_epoch(epoch)
-
         model.train(False)
-
-        wi=model.model_dense_repeat[0].weight.clone().detach().cpu().numpy()
-        dw=wi-w0
-        print()
-        print(np.linalg.norm(dw))
         
         running_vloss = 0.0
         avg_vloss=0.0
@@ -189,22 +163,20 @@ def train(model, train_path, val_path, batch_size, records_path, epochs, seed):
             running_vloss += float(vloss)
 
             avg_vloss = running_vloss / (i + 1)
-            print('SEQ - EPOCH {}: LOSS train {} valid {}'.format(epoch + 1, avg_loss, avg_vloss),end="\r")
+            print('SEQ - EPOCH {}: LOSS train {} valid {}\r'.format(epoch + 1, avg_loss, avg_vloss),end="")
             val_predictions.append(voutputs.cpu().detach().numpy())
             val_labels.append(vlabels.cpu().detach().numpy())
-            
+        print()   
         torch.save(model.state_dict(), records_path+'model_epoch{}.torch'.format(epoch+1))    
         hist["loss"].append(avg_loss)
         hist["val_loss"].append(avg_vloss)
-        predictions=np.concatenate(val_predictions)
-        labels=np.concatenate(val_labels)
+        val_predictions=np.concatenate(val_predictions)
+        val_labels=np.concatenate(val_labels)
         
-        aupr = average_precision_score(labels, predictions)
+        aupr = average_precision_score(val_labels, val_predictions)
 
         precision_recall_history["val_auprc"].append(aupr)
-        
-        epoch += 1
-    
+
     loss, val_pr = save_metrics(hist, precision_recall_history, records_path=records_path)
     
     return loss, val_pr
@@ -212,8 +184,6 @@ def train(model, train_path, val_path, batch_size, records_path, epochs, seed):
 
 def build_and_train_net(hyperparams, train_path, val_path, batch_size,
                         records_path, seq_len, epochs, seed):
-
-    iterutils.setRandomSeed(seed)
 
     model = build_model(params=hyperparams, seq_length=seq_len)
 

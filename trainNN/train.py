@@ -3,7 +3,6 @@ from json import load
 import numpy as np
 import yaml
 from subprocess import call
-# from tensorflow.keras.models import load_model
 
 from train_seq import build_and_train_net, build_model
 from train_sc import transfer_and_train_msc, bimodal_network
@@ -22,7 +21,6 @@ class Params:
         self.pooling_stride = 15
         self.dropout = 0.5
         self.dense_layer_size = 512
-        #self.lstm_out = 32 
 
         
 def return_best_model(pr_vec, model_path):
@@ -98,7 +96,7 @@ def run_bimodal_network(train_path, val_path, records_path, base_seq_model_path,
 
 def train_bichrom(data_paths, outdir, seq_len, bin_size, epochs, net="bimodal", seed=1000):
     
-    print(f"Selected network (train.py) = {net}")
+    print(f"\nSelected network (train.py) = {net}")
     
     if net == "seq":
         print("seq selected")
@@ -149,11 +147,11 @@ def train_bichrom(data_paths, outdir, seq_len, bin_size, epochs, net="bimodal", 
     else:
         print("bimodal selected")
         # Train the sequence-only network (M-SEQ)
-        print("Training seq")
+        print("\nTraining seq")
         mseq_path = run_seq_network(train_path=data_paths['train_seq'], val_path=data_paths['val'], records_path=outdir, seq_len=seq_len, epochs=epochs, seed=seed)
 
         # Train the bimodal network (M-SC)
-        print("Training bichrom")
+        print("\nTraining bichrom")
         msc_path = run_bimodal_network(train_path=data_paths['train_bichrom'], val_path=data_paths['val'], records_path=outdir, base_seq_model_path=mseq_path, bin_size=bin_size, seq_len=seq_len, epochs=epochs, seed=seed)
 
         # Evaluate both models on held-out test sets and plot metrics

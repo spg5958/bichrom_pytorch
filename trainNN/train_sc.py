@@ -26,10 +26,12 @@ def TFdataset(path, batchsize, dataflag, bin_size, seed):
     
     return TFdataset_batched
 
+
 class _reshape(nn.Module):
     def forward(self, x, shape):
         return torch.reshape(x,(x.shape[0],)+shape)
                 
+        
 class bichrom_chrom(nn.Module):
     def __init__(self, no_of_chromatin_tracks, seq_len, bin_size):
         super().__init__()
@@ -40,7 +42,7 @@ class bichrom_chrom(nn.Module):
         self.conv1d=nn.Conv1d(no_of_chromatin_tracks, 15, 1, padding="valid")
         self.relu=nn.ReLU()
         self.lstm=nn.LSTM(15, 5, batch_first=True)
-        self.relu2=nn.ReLU()
+        self.relu1=nn.ReLU()
         self.linear=nn.Linear(5, 1)
         self.tanh=nn.Tanh()
         
@@ -69,7 +71,7 @@ class bichrom_chrom(nn.Module):
         xc=self.relu(xc)
         xc=torch.permute(xc, (0, 2, 1))
         xc=self.lstm(xc)[0][:, -1, :]
-        xc=self.relu2(xc)
+        xc=self.relu1(xc)
         xc=self.linear(xc)
         xc=self.tanh(xc)
         return xc
@@ -97,8 +99,7 @@ class bimodal_network(nn.Module):
         torch.nn.init.constant_(self.linear.bias,0)
         torch.nn.init.xavier_uniform_(self.linear1.weight)
         torch.nn.init.constant_(self.linear1.bias,0)
-        
-        
+               
     def forward(self,seq_input,chromatin_input):
         self.base_model(seq_input)
         curr_tensor=self.activation['dense_2']
@@ -133,39 +134,9 @@ def save_metrics(hist_object, pr_history, records_path):
 def transfer(train_path, val_path, basemodel, model,
              batchsize, records_path, bin_size, epochs, seed):
     
-    # GPU
-    device = iterutils.getDevice()
-    
-    # transfer model to GPU
-    basemodel.to(device)
-    model.to(device)
-
-    for param in basemodel.parameters():
-        param.requires_grad = False
-        
-   
-    
-    loss_fn = torch.nn.BCELoss()
-    optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9, nesterov=True)
-    
-    model.train(False)
-    #w0=basemodel.model_dense_repeat[6].weight.clone().detach().cpu().numpy()
-    w0=model.model.linear.weight.clone().detach().cpu().numpy()
-    
-    def decayed_learning_rate(step):
-        initial_learning_rate = 0.01
-        decay_rate = 1e-6
-        decay_step = 1.0
-        return initial_learning_rate / (1 + decay_rate * step / decay_step)
-    my_lr_scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=decayed_learning_rate)
-
-
-    train_dataset = TFdataset(train_path, batchsize, "all", bin_size, seed)
-    val_dataset = TFdataset(val_path, batchsize, "all", bin_size, seed)
-            
     def train_one_epoch(epoch_index):
         running_loss = 0.
-        batch_avg_vloss = 0.
+        batch_avg_loss = 0.
 
         for i, data in enumerate(train_dataset):
  
@@ -182,37 +153,48 @@ def transfer(train_path, val_path, basemodel, model,
             loss.backward()
 
             optimizer.step()
-            
 
             running_loss += loss.item()
-            batch_avg_vloss = running_loss / (i+1) # loss per batch
-            print('CHROM - EPOCH {}:  batch {} loss: {}'.format(epoch_index+1, i + 1, batch_avg_vloss), end="\r")
+            batch_avg_loss = running_loss / (i+1) # loss per batch
+            print('CHROM - EPOCH {}:  batch {} loss: {}'.format(epoch_index+1, i + 1, batch_avg_loss), end="\r")
         my_lr_scheduler.step()
-        return batch_avg_vloss
+        print()
+        return batch_avg_loss
     
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    # GPU
+    device = iterutils.getDevice()
+    basemodel.to(device)
+    model.to(device)
+
+    for param in basemodel.parameters():
+        param.requires_grad = False
+        
+    loss_fn = torch.nn.BCELoss()
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9, nesterov=True)
+       
+    def decayed_learning_rate(step):
+        initial_learning_rate = 0.01
+        decay_rate = 1e-6
+        decay_step = 1.0
+        return initial_learning_rate / (1 + decay_rate * step / decay_step)
+    my_lr_scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=decayed_learning_rate)
+
+    train_dataset = TFdataset(train_path, batchsize, "all", bin_size, seed)
+    val_dataset = TFdataset(val_path, batchsize, "all", bin_size, seed)
 
     print(f"Epochs = {epochs}")
     EPOCHS = epochs
-
-    best_vloss = 1_000_000.
 
     hist={"loss":[],"val_loss":[]}
     precision_recall_history={"val_auprc":[]}
     
     for epoch in range(EPOCHS):
-        print('\nEPOCH {}:'.format(epoch + 1))
+        print('EPOCH {}:'.format(epoch + 1))
            
         model.train(True)
         avg_loss = train_one_epoch(epoch)
 
         model.train(False)
-        
-        #wi=basemodel.model_dense_repeat[6].weight.clone().detach().cpu().numpy()
-        wi=model.model.linear.weight.clone().detach().cpu().numpy()
-        dw=wi-w0
-        print()
-        print(np.linalg.norm(dw))
         
         running_vloss = 0.0
         avg_vloss=0.0
@@ -233,15 +215,14 @@ def transfer(train_path, val_path, basemodel, model,
             print('CHROM - EPOCH {}: LOSS train {} valid {}'.format(epoch + 1, avg_loss, avg_vloss), end="\r")
             val_predictions.append(voutputs.cpu().detach().numpy())
             val_labels.append(vlabels.cpu().detach().numpy())
-   
+        print()
         torch.save(model.state_dict(), records_path+'model_epoch{}.torch'.format(epoch+1))
         hist["loss"].append(avg_loss)
         hist["val_loss"].append(avg_vloss)
-        predictions=np.concatenate(val_predictions)
-        labels=np.concatenate(val_labels)
-        aupr = average_precision_score(labels, predictions)
+        val_predictions=np.concatenate(val_predictions)
+        val_labels=np.concatenate(val_labels)
+        aupr = average_precision_score(val_labels, val_predictions)
         precision_recall_history["val_auprc"].append(aupr)
-        epoch += 1
     
     loss, val_pr = save_metrics(hist, precision_recall_history,records_path=records_path)
     

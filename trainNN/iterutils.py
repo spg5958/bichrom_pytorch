@@ -127,13 +127,10 @@ def train_generator_h5(h5file, dspath, batchsize, seqlen, dtype, iterflag):
 
                 
 def train_TFRecord_dataset(dspath, batchsize, dataflag, shuffle=True, drop_remainder=True, transforms=None, seed=None):
-    
-    print(f"Seed = {seed}")
-    
+        
     loader=None
-    g=setRandomSeed(seed)
     
-    dataloader_kws={"num_workers":8, "batch_size":batchsize, "generator":g}
+    dataloader_kws={"num_workers":4, "batch_size":batchsize}
     loader=SeqChromDatasetByBed(dspath["TFRecord"],dspath['fa'],dspath["chromatin_tracks"],transforms=transforms,dataloader_kws=dataloader_kws)
 
     return loader
@@ -150,11 +147,4 @@ def getDevice():
     print(f"DEVICE = {device}")
     return device
 
-def setRandomSeed(seed):
-    random.seed(seed)
-    torch.manual_seed(seed)
-    np.random.seed(seed)
-    g = torch.Generator()
-    g.manual_seed(seed)
-    return g
     
